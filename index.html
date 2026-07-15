@@ -1,0 +1,982 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Warung Kelontong Bawen - Minimarket Online Sembako & Kebutuhan Harian</title>
+    
+    <!-- Google Fonts: Inter for general UI, Space Grotesk for Display -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS Play CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+              display: ['Space Grotesk', 'sans-serif'],
+            }
+          }
+        }
+      }
+    </script>
+    
+    <!-- Custom Style Sheet -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Leaflet CSS & JS for OpenStreetMap -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+  </head>
+  <body class="bg-gray-50 font-sans text-gray-800 min-h-screen flex flex-col selection:bg-emerald-100 selection:text-emerald-800">
+
+    <!-- TOP BULLETIN BAR -->
+    <div id="bulletin-bar" class="bg-gradient-to-r from-emerald-600 to-teal-700 text-white text-xs font-semibold py-2 px-4 text-center tracking-wide shadow-sm">
+      🚀 Gratis Ongkir khusus area Bawen & sekitarnya untuk minimal pembelian Rp 50.000!
+    </div>
+
+    <!-- MAIN STICKY HEADER -->
+    <header id="main-header" class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm transition-all duration-300">
+      <div id="header-container" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-4">
+        
+        <!-- Logo / Store Title -->
+        <a href="#" id="store-logo-link" class="flex items-center space-x-2.5 flex-shrink-0 group">
+          <div id="logo-icon-bg" class="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shadow-sm group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
+            <i data-lucide="store" class="w-5.5 h-5.5"></i>
+          </div>
+          <div id="logo-text-container" class="flex flex-col">
+            <h1 id="logo-title" class="font-display font-bold text-gray-900 text-base sm:text-lg tracking-tight leading-none group-hover:text-emerald-600 transition-colors">
+              Warung Kelontong <span class="text-emerald-600">Bawen</span>
+            </h1>
+            <span id="logo-tagline" class="text-[10px] text-gray-400 font-medium uppercase tracking-widest mt-0.5">Minimarket Online</span>
+          </div>
+        </a>
+
+        <!-- Search Bar (Desktop / Large Screens) -->
+        <div id="search-bar-desktop" class="hidden md:flex flex-1 max-w-xl relative">
+          <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+            <i data-lucide="search" class="w-4.5 h-4.5"></i>
+          </div>
+          <input 
+            type="text" 
+            id="search-input" 
+            placeholder="Cari beras, telur, minyak goreng, mie instan..." 
+            class="w-full bg-gray-50 border border-gray-200 hover:border-gray-300 focus:border-emerald-500 focus:bg-white rounded-xl py-2.5 pl-10 pr-10 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-emerald-100 font-medium"
+          />
+          <button 
+            type="button" 
+            id="clear-search-btn" 
+            class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 hidden cursor-pointer"
+          >
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+        </div>
+
+        <!-- Right Icons (Cart, Open Status) -->
+        <div id="header-right-actions" class="flex items-center space-x-4">
+          <!-- Store Open Badge -->
+          <div id="store-status-badge" class="hidden sm:flex items-center space-x-1.5 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-full px-3 py-1 text-xs font-semibold">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>Buka: 07:00 - 21:00</span>
+          </div>
+
+          <!-- Cart Toggle Button (Desktop) -->
+          <button 
+            type="button" 
+            id="cart-toggle-btn" 
+            class="relative p-2.5 rounded-xl border border-gray-200 hover:border-emerald-500 hover:bg-emerald-50 text-gray-700 hover:text-emerald-600 transition-all duration-200 cursor-pointer shadow-sm bg-white"
+            aria-label="Buka Keranjang Belanja"
+          >
+            <i data-lucide="shopping-basket" class="w-5.5 h-5.5"></i>
+            <span 
+              id="cart-badge" 
+              class="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-sm hidden"
+            >
+              0
+            </span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- MAIN BODY CONTAINER -->
+    <main id="main-content-area" class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+      <!-- MOBILE SEARCH BAR (Visible only on small screens) -->
+      <div id="search-bar-mobile" class="md:hidden mb-5 relative">
+        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+          <i data-lucide="search" class="w-4.5 h-4.5"></i>
+        </div>
+        <input 
+          type="text" 
+          id="search-input-mobile" 
+          placeholder="Cari sembako & kebutuhan rumah tangga..." 
+          class="w-full bg-white border border-gray-200 rounded-xl py-3 pl-10 pr-10 text-sm shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 font-medium"
+        />
+        <!-- Synchronize inputs in script.js -->
+        <script>
+          document.addEventListener('DOMContentLoaded', () => {
+            const deskSearch = document.getElementById('search-input');
+            const mobSearch = document.getElementById('search-input-mobile');
+            if (deskSearch && mobSearch) {
+              mobSearch.addEventListener('input', (e) => {
+                deskSearch.value = e.target.value;
+                deskSearch.dispatchEvent(new Event('input'));
+              });
+              deskSearch.addEventListener('input', (e) => {
+                mobSearch.value = e.target.value;
+              });
+            }
+          });
+        </script>
+      </div>
+
+      <!-- HERO PROMO BANNER -->
+      <section id="hero-promo-banner" class="mb-8 rounded-3xl overflow-hidden bg-gradient-to-br from-emerald-850 to-teal-900 bg-emerald-900 text-white p-6 sm:p-10 relative shadow-xl border border-emerald-800 flex flex-col md:flex-row items-center justify-between gap-6">
+        <!-- Floating vector illustrations background pattern (simplified SVG) -->
+        <div class="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]"></div>
+        
+        <div id="hero-text-block" class="relative z-10 max-w-lg text-center md:text-left flex flex-col items-center md:items-start">
+          <span id="hero-pill" class="inline-flex items-center bg-emerald-850/50 backdrop-blur-sm border border-emerald-500/20 text-emerald-300 text-xs font-bold px-3 py-1.5 rounded-full mb-4">
+            🌾 Melayani Kebutuhan Sembako Harian
+          </span>
+          <h2 id="hero-title" class="font-display font-extrabold text-2xl sm:text-3xl lg:text-4xl leading-tight mb-3">
+            Belanja Sembako <span class="text-emerald-300">Mudah &amp; Praktis</span> dari Rumah
+          </h2>
+          <p id="hero-subtitle" class="text-emerald-100 text-xs sm:text-sm leading-relaxed mb-5">
+            Pesan kebutuhan dapur dan rumah tangga langsung dengan <strong>Pesan cepat melalui WhatsApp</strong>. Pengiriman kilat khusus wilayah Bawen & sekitarnya. Bayar setelah barang sampai di rumah (COD)!
+          </p>
+          
+          <button 
+            type="button" 
+            onclick="document.getElementById('products-catalog-section').scrollIntoView({ behavior: 'smooth' });"
+            class="mb-6 bg-white text-emerald-800 hover:bg-emerald-50 font-bold px-6 py-3.5 rounded-2xl shadow-lg hover:shadow-xl transition-all inline-flex items-center gap-2 cursor-pointer text-sm sm:text-base self-center md:self-start transform active:scale-95 duration-150"
+          >
+            <i data-lucide="shopping-bag" class="w-4.5 h-4.5"></i>
+            Pesan Sekarang
+          </button>
+
+          <div id="hero-bullets-grid" class="grid grid-cols-2 gap-4 max-w-sm mx-auto md:mx-0 w-full pt-2 border-t border-emerald-800/40">
+            <div class="flex items-center space-x-2 text-left">
+              <span class="w-6 h-6 rounded-lg bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-300 text-xs">✓</span>
+              <span class="text-xs font-medium text-emerald-100">Bisa COD</span>
+            </div>
+            <div class="flex items-center space-x-2 text-left">
+              <span class="w-6 h-6 rounded-lg bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-300 text-xs">✓</span>
+              <span class="text-xs font-medium text-emerald-100">Harga Murah</span>
+            </div>
+            <div class="flex items-center space-x-2 text-left">
+              <span class="w-6 h-6 rounded-lg bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-300 text-xs">✓</span>
+              <span class="text-xs font-medium text-emerald-100">Sembako Fresh</span>
+            </div>
+            <div class="flex items-center space-x-2 text-left">
+              <span class="w-6 h-6 rounded-lg bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-300 text-xs">✓</span>
+              <span class="text-xs font-medium text-emerald-100">Pesan WA</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Interactive Promo Feature -->
+        <div id="hero-badge-card" class="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-5 text-center w-full max-w-[280px] sm:max-w-[320px] shadow-lg animate-wave flex-shrink-0">
+          <div class="w-12 h-12 rounded-full bg-amber-500 text-white flex items-center justify-center mx-auto mb-3 shadow-md">
+            <i data-lucide="truck" class="w-6 h-6"></i>
+          </div>
+          <span class="text-[10px] uppercase font-extrabold tracking-widest text-amber-400 block mb-1">PROMO TERBATAS</span>
+          <h4 class="font-display font-bold text-lg text-white mb-1">FREE ONGKIR BAWEN</h4>
+          <p class="text-xs text-emerald-100 leading-relaxed mb-4">Cukup belanja minimal <strong>Rp 50.000</strong> barang dikirim gratis sampai depan pintu!</p>
+          <div class="bg-white/20 rounded-xl py-1.5 px-3 text-[11px] font-bold text-white uppercase tracking-wider inline-block">
+            KODE: BEBASONGKIR
+          </div>
+        </div>
+      </section>
+
+      <!-- CATEGORIES CONTAINER & TITLE -->
+      <section id="categories-section" class="mb-8">
+        <div id="categories-header" class="flex items-center justify-between mb-4">
+          <h3 id="categories-title" class="font-display font-bold text-gray-900 text-base sm:text-lg flex items-center gap-2">
+            <span class="w-3.5 h-6 rounded bg-emerald-600 block"></span>
+            Pilih Kategori Produk
+          </h3>
+          <span id="categories-indicator" class="text-xs text-gray-400 font-medium hidden sm:inline">Geser untuk melihat semua →</span>
+        </div>
+
+        <!-- Horizontal scrollbar slider containing custom chips -->
+        <div id="category-slider-container" class="relative">
+          <div 
+            id="category-slider" 
+            class="flex items-center gap-2.5 overflow-x-auto pb-2 pt-1 no-scrollbar scroll-smooth"
+          >
+            <!-- Categories rendered dynamically via JS -->
+          </div>
+        </div>
+      </section>
+
+      <!-- PRODUCTS CATALOG SECTION -->
+      <section id="products-catalog-section" class="mb-12">
+        <div id="catalog-header" class="flex items-center justify-between mb-6">
+          <h3 id="catalog-title" class="font-display font-bold text-gray-900 text-base sm:text-lg flex items-center gap-2">
+            <span class="w-3.5 h-6 rounded bg-emerald-600 block"></span>
+            Daftar Produk Sembako
+          </h3>
+          <p id="catalog-counter" class="text-xs font-semibold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full">
+            Kualitas Terjamin
+          </p>
+        </div>
+
+        <!-- Products Grid Layout -->
+        <div 
+          id="product-grid" 
+          class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6"
+        >
+          <!-- Products dynamic cards rendered via JS -->
+        </div>
+      </section>
+
+      <!-- CUSTOMER REVIEWS SECTION -->
+      <section id="reviews-section" class="mb-12 bg-white rounded-3xl p-6 sm:p-8 border border-gray-150/80 shadow-xs">
+        <div id="reviews-header" class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div>
+            <h3 class="font-display font-bold text-gray-900 text-base sm:text-lg flex items-center gap-2">
+              <span class="w-3.5 h-6 rounded bg-emerald-600 block"></span>
+              Ulasan Pelanggan Setia
+            </h3>
+            <p class="text-xs text-gray-400 mt-1">Umpan balik asli dari pelanggan Warung Bawen</p>
+          </div>
+          <button 
+            type="button" 
+            id="btn-toggle-review-form" 
+            class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold px-4 py-2.5 rounded-xl transition-all duration-150 flex items-center gap-1.5 self-start sm:self-auto cursor-pointer shadow-sm"
+          >
+            <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+            Tulis Ulasan
+          </button>
+        </div>
+
+        <!-- Form Tulis Ulasan (Hidden by default, toggled with JS) -->
+        <div id="review-form-container" class="hidden mb-6 p-4 sm:p-5 bg-gray-50 rounded-2xl border border-gray-150 relative">
+          <h4 class="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Tulis Ulasan Baru Anda</h4>
+          <form id="add-review-form" class="space-y-3.5">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label for="review-author" class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Nama Anda *</label>
+                <input 
+                  type="text" 
+                  id="review-author" 
+                  required 
+                  placeholder="Contoh: Ibu Siti" 
+                  class="w-full border border-gray-200 focus:border-emerald-500 focus:outline-none rounded-xl px-3 py-2.5 text-xs bg-white transition-colors"
+                />
+              </div>
+              <div>
+                <label for="review-rating" class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Rating Bintang *</label>
+                <div class="flex items-center gap-1.5 py-1.5">
+                  <input type="hidden" id="review-rating-value" value="5">
+                  <div id="star-rating-selector" class="flex gap-1">
+                    <!-- 5 stars selector -->
+                    <button type="button" data-rating="1" class="text-amber-400 focus:outline-none cursor-pointer hover:scale-110 transition-transform"><i data-lucide="star" class="w-5 h-5 fill-current"></i></button>
+                    <button type="button" data-rating="2" class="text-amber-400 focus:outline-none cursor-pointer hover:scale-110 transition-transform"><i data-lucide="star" class="w-5 h-5 fill-current"></i></button>
+                    <button type="button" data-rating="3" class="text-amber-400 focus:outline-none cursor-pointer hover:scale-110 transition-transform"><i data-lucide="star" class="w-5 h-5 fill-current"></i></button>
+                    <button type="button" data-rating="4" class="text-amber-400 focus:outline-none cursor-pointer hover:scale-110 transition-transform"><i data-lucide="star" class="w-5 h-5 fill-current"></i></button>
+                    <button type="button" data-rating="5" class="text-amber-400 focus:outline-none cursor-pointer hover:scale-110 transition-transform"><i data-lucide="star" class="w-5 h-5 fill-current"></i></button>
+                  </div>
+                  <span id="star-rating-text" class="text-[11px] font-bold text-gray-600 ml-2">Sangat Puas (5/5)</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label for="review-comment" class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Ulasan / Pendapat Anda *</label>
+              <textarea 
+                id="review-comment" 
+                required 
+                rows="3" 
+                placeholder="Tulis ulasan Anda mengenai pelayanan, harga, kualitas barang, atau kecepatan kirim..." 
+                class="w-full border border-gray-200 focus:border-emerald-500 focus:outline-none rounded-xl px-3 py-2.5 text-xs bg-white transition-colors resize-none"
+              ></textarea>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-1">
+              <button 
+                type="button" 
+                id="btn-cancel-review" 
+                class="px-4 py-2.5 border border-gray-200 text-gray-500 hover:bg-gray-100 text-xs font-semibold rounded-xl transition-all cursor-pointer"
+              >
+                Batal
+              </button>
+              <button 
+                type="submit" 
+                class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer"
+              >
+                Kirim Ulasan
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Rating Summary Box & Review Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+          <!-- Left side: Stat card -->
+          <div class="md:col-span-4 bg-gray-50 border border-gray-100/80 rounded-2xl p-5 flex flex-col items-center justify-center text-center">
+            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">RATA-RATA RATING</span>
+            <div class="flex items-baseline gap-1.5 mb-1.5">
+              <span id="avg-rating-big" class="text-4xl font-extrabold text-gray-800">4.9</span>
+              <span class="text-sm text-gray-400 font-medium">/ 5</span>
+            </div>
+            
+            <!-- Stars row -->
+            <div id="avg-stars-container" class="flex gap-0.5 text-amber-400 mb-2">
+              <i data-lucide="star" class="w-4 h-4 fill-current"></i>
+              <i data-lucide="star" class="w-4 h-4 fill-current"></i>
+              <i data-lucide="star" class="w-4 h-4 fill-current"></i>
+              <i data-lucide="star" class="w-4 h-4 fill-current"></i>
+              <i data-lucide="star" class="w-4 h-4 fill-current"></i>
+            </div>
+            
+            <p id="total-reviews-count" class="text-[11px] text-gray-500 font-medium">Berdasarkan 3 ulasan pelanggan</p>
+            
+            <!-- Rating bar distribution -->
+            <div class="w-full mt-4 space-y-1.5 max-w-[200px]">
+              <div class="flex items-center gap-2 text-[10px] text-gray-500">
+                <span class="w-3">5</span>
+                <i data-lucide="star" class="w-2.5 h-2.5 fill-current text-amber-400"></i>
+                <div class="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div id="bar-5-star" class="h-full bg-amber-400 rounded-full" style="width: 100%;"></div>
+                </div>
+                <span id="count-5-star" class="w-4 text-right">3</span>
+              </div>
+              <div class="flex items-center gap-2 text-[10px] text-gray-500">
+                <span class="w-3">4</span>
+                <i data-lucide="star" class="w-2.5 h-2.5 fill-current text-amber-400"></i>
+                <div class="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div id="bar-4-star" class="h-full bg-amber-400 rounded-full" style="width: 0%;"></div>
+                </div>
+                <span id="count-4-star" class="w-4 text-right">0</span>
+              </div>
+              <div class="flex items-center gap-2 text-[10px] text-gray-500">
+                <span class="w-3">3</span>
+                <i data-lucide="star" class="w-2.5 h-2.5 fill-current text-amber-400"></i>
+                <div class="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div id="bar-3-star" class="h-full bg-amber-400 rounded-full" style="width: 0%;"></div>
+                </div>
+                <span id="count-3-star" class="w-4 text-right">0</span>
+              </div>
+              <div class="flex items-center gap-2 text-[10px] text-gray-500">
+                <span class="w-3">2</span>
+                <i data-lucide="star" class="w-2.5 h-2.5 fill-current text-amber-400"></i>
+                <div class="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div id="bar-2-star" class="h-full bg-amber-400 rounded-full" style="width: 0%;"></div>
+                </div>
+                <span id="count-2-star" class="w-4 text-right">0</span>
+              </div>
+              <div class="flex items-center gap-2 text-[10px] text-gray-500">
+                <span class="w-3">1</span>
+                <i data-lucide="star" class="w-2.5 h-2.5 fill-current text-amber-400"></i>
+                <div class="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div id="bar-1-star" class="h-full bg-amber-400 rounded-full" style="width: 0%;"></div>
+                </div>
+                <span id="count-1-star" class="w-4 text-right">0</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right side: List of reviews -->
+          <div class="md:col-span-8 space-y-4">
+            <div id="reviews-list-container" class="space-y-3 max-h-[360px] overflow-y-auto pr-1">
+              <!-- Reviews rendered dynamically -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- SHOPPING CART SLIDER DRAWER -->
+    <!-- Backdrop overlay -->
+    <div 
+      id="cart-overlay" 
+      class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden transition-opacity duration-300"
+    ></div>
+
+    <!-- Drawer container -->
+    <div 
+      id="cart-drawer" 
+      class="fixed inset-y-0 right-0 max-w-md w-full h-full bg-white shadow-2xl z-[100] flex flex-col cart-drawer transform translate-x-full border-l border-gray-100"
+    >
+      <!-- Drawer Header -->
+      <div id="cart-header" class="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center">
+            <i data-lucide="shopping-basket" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="font-display font-bold text-gray-900 text-sm sm:text-base">Keranjang Belanja</h3>
+            <span id="cart-count-text" class="text-xs text-gray-400 font-medium">(0 Barang)</span>
+          </div>
+        </div>
+        <button 
+          type="button" 
+          id="close-cart-btn" 
+          class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+          aria-label="Tutup Keranjang"
+        >
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Drawer Body (Two states: Empty vs Filled) -->
+      <div id="cart-drawer-body" class="flex-1 overflow-y-auto p-5">
+        
+        <!-- State 1: EMPTY CART -->
+        <div id="cart-empty-state" class="h-full flex flex-col items-center justify-center text-center py-10">
+          <div class="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mb-4">
+            <i data-lucide="shopping-cart" class="w-10 h-10"></i>
+          </div>
+          <h4 class="font-semibold text-gray-800 text-base">Keranjangmu Kosong</h4>
+          <p class="text-xs text-gray-400 max-w-[240px] mt-1.5 mb-6">Belum ada barang sembako yang ditambahkan ke keranjang belanja.</p>
+          <button 
+            type="button" 
+            onclick="document.getElementById('close-cart-btn').click();"
+            class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs py-2.5 px-6 rounded-xl transition-all shadow-sm cursor-pointer"
+          >
+            Mulai Belanja
+          </button>
+        </div>
+
+        <!-- State 2: FILLED CART -->
+        <div id="cart-filled-state" class="hidden flex flex-col h-full justify-between">
+          
+          <!-- Free shipping progress bar notification -->
+          <div id="progress-container" class="bg-amber-50 border border-amber-100 p-3 rounded-xl mb-4">
+            <div class="h-2 w-full bg-amber-100 rounded-full overflow-hidden mb-1.5">
+              <div id="progress-fill" class="h-full bg-amber-500 rounded-full transition-all duration-300" style="width: 30%"></div>
+            </div>
+            <p id="progress-text" class="text-[10px] sm:text-xs text-amber-800 leading-tight">
+              Belanja <strong>Rp 15.000</strong> lagi untuk gratis ongkir Bawen!
+            </p>
+          </div>
+
+          <!-- Items Row List -->
+          <div id="cart-items-container" class="space-y-1 divide-y divide-gray-100 pr-1 max-h-[250px] overflow-y-auto mb-6">
+            <!-- Dynamically populated rows via JS -->
+          </div>
+
+          <!-- Checkout Details Form -->
+          <form id="checkout-form" class="border-t border-gray-100 pt-5 mt-auto">
+            <h4 class="font-display font-bold text-gray-900 text-xs sm:text-sm mb-3 flex items-center gap-1.5 uppercase tracking-wide">
+              <i data-lucide="truck" class="w-4 h-4 text-emerald-600"></i> Informasi Pengiriman
+            </h4>
+            
+            <div class="space-y-3 mb-5">
+              <div>
+                <label for="checkout-name" class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Nama Lengkap Penerima *</label>
+                <input 
+                  type="text" 
+                  id="checkout-name" 
+                  placeholder="Contoh: Ibu Siti Aminah" 
+                  required 
+                  class="w-full border border-gray-200 focus:border-emerald-500 focus:outline-none rounded-xl px-3 py-2 text-xs transition-colors"
+                />
+              </div>
+
+              <div>
+                <label for="checkout-address" class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Alamat Lengkap Pengiriman *</label>
+                <textarea 
+                  id="checkout-address" 
+                  rows="2" 
+                  placeholder="Jl. Kartini No. 12, RT 02/RW 03, Bawen, Kab. Semarang" 
+                  required 
+                  class="w-full border border-gray-200 focus:border-emerald-500 focus:outline-none rounded-xl px-3 py-2 text-xs transition-colors resize-none"
+                ></textarea>
+                
+                <!-- GPS & Map Helpers -->
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <button 
+                    type="button" 
+                    id="btn-get-gps" 
+                    class="flex-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/60 font-semibold py-2 px-3 rounded-xl transition-all text-[11px] flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                  >
+                    <i data-lucide="map-pin" class="w-3.5 h-3.5"></i>
+                    Gunakan GPS Saya
+                  </button>
+                  <button 
+                    type="button" 
+                    id="btn-toggle-map" 
+                    class="flex-1 bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 font-semibold py-2 px-3 rounded-xl transition-all text-[11px] flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                  >
+                    <i data-lucide="map" class="w-3.5 h-3.5"></i>
+                    Peta Lokasi Toko &amp; Rumah
+                  </button>
+                </div>
+
+                <!-- Leaflet Map Container -->
+                <div id="map-picker-container" class="hidden mt-2.5 border border-gray-200 rounded-2xl overflow-hidden bg-gray-50 relative">
+                  <div class="bg-gray-100 px-3 py-2 border-b border-gray-150 flex items-center justify-between">
+                    <span class="text-[10px] font-bold text-gray-600 uppercase tracking-wider">Geser Pin Biru Ke Lokasi Rumah Anda</span>
+                    <button type="button" id="btn-close-map" class="text-gray-400 hover:text-gray-600 cursor-pointer">
+                      <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                    </button>
+                  </div>
+                  
+                  <!-- Address search input inside map -->
+                  <div class="p-2 bg-white border-b border-gray-100 flex gap-1.5">
+                    <input 
+                      type="text" 
+                      id="map-search-input" 
+                      placeholder="Ketik jalan, nama desa, atau kelurahan..." 
+                      class="flex-1 border border-gray-200 focus:border-emerald-500 focus:outline-none rounded-xl px-2.5 py-1.5 text-[11px] transition-colors"
+                    />
+                    <button 
+                      type="button" 
+                      id="btn-map-search" 
+                      class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-xl text-[11px] cursor-pointer"
+                    >
+                      Cari
+                    </button>
+                  </div>
+
+                  <!-- Actual Leaflet Map element -->
+                  <div id="checkout-map" class="w-full h-48" style="z-index: 1;"></div>
+                  
+                  <div class="bg-emerald-50/90 backdrop-blur-xs px-3 py-2 text-[10px] text-emerald-800 leading-relaxed border-t border-emerald-100 flex items-center justify-between">
+                    <span id="map-status-text" class="font-medium">Memuat peta...</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Jarak Pengiriman (KM) Selector -->
+              <div class="border-t border-dashed border-gray-150 pt-3">
+                <label for="checkout-distance-select" class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">
+                  🚗 Pilih Jarak / Wilayah Pengiriman *
+                </label>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-left">
+                  <select 
+                    id="checkout-distance-select" 
+                    required
+                    class="w-full border border-gray-200 focus:border-emerald-500 focus:outline-none rounded-xl px-2.5 py-2.5 text-xs bg-white text-gray-700 font-semibold transition-colors cursor-pointer"
+                  >
+                    <option value="1" selected>Bawen Kota (Jarak ~1 KM)</option>
+                    <option value="3">Harjosari / Samban (Jarak ~3 KM)</option>
+                    <option value="4">Asinan / Rawa Pening (Jarak ~4 KM)</option>
+                    <option value="5">Tuntang Kota (Jarak ~5 KM)</option>
+                    <option value="6">Ambarawa Kota (Jarak ~6 KM) - Di atas 5 KM</option>
+                    <option value="8">Bergas / Klepu (Jarak ~8 KM) - Di atas 5 KM</option>
+                    <option value="12">Ungaran / Jambu (Jarak ~12 KM) - Di atas 5 KM</option>
+                    <option value="custom">Tulis Jarak Manual (KM)...</option>
+                  </select>
+                  
+                  <div id="checkout-distance-custom-container" class="hidden flex items-center gap-1.5">
+                    <input 
+                      type="number" 
+                      id="checkout-distance-custom-input" 
+                      min="1" 
+                      max="50" 
+                      value="6"
+                      placeholder="Jarak (KM)"
+                      class="w-full border border-gray-200 focus:border-emerald-500 focus:outline-none rounded-xl px-3 py-2 text-xs font-bold transition-colors text-center"
+                    />
+                    <span class="text-xs text-gray-500 font-bold">KM</span>
+                  </div>
+                </div>
+                <p id="distance-info-hint" class="text-[9px] text-gray-400 mt-1">
+                  * Bebas Ongkir harian (maks. 5 KM) untuk pembelanjaan minimal Rp 50.000. Jarak di atas 5 KM dikenakan tambahan biaya Rp 2.000/KM.
+                </p>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label for="checkout-payment" class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Metode Pembayaran</label>
+                  <select 
+                    id="checkout-payment" 
+                    class="w-full border border-gray-200 focus:border-emerald-500 focus:outline-none rounded-xl px-2.5 py-2 text-xs bg-white text-gray-700 font-medium transition-colors cursor-pointer"
+                  >
+                    <option value="Bayar di Rumah (COD)" selected>COD (Bayar di Rumah)</option>
+                    <option value="Transfer Bank BCA/Mandiri">Transfer Bank</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="checkout-notes" class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Catatan Tambahan</label>
+                  <input 
+                    type="text" 
+                    id="checkout-notes" 
+                    placeholder="Contoh: Titip tetangga jika keluar" 
+                    class="w-full border border-gray-200 focus:border-emerald-500 focus:outline-none rounded-xl px-3 py-2 text-xs transition-colors"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- Receipt Bill Summary calculations -->
+            <div id="cart-receipt-summary" class="bg-gray-50 border border-gray-100 rounded-2xl p-4 mb-4 space-y-2 text-xs text-left">
+              <div class="flex justify-between text-gray-500">
+                <span>Subtotal Sembako</span>
+                <span id="summary-subtotal" class="font-medium text-gray-800">Rp 0</span>
+              </div>
+              <div class="flex justify-between text-gray-500">
+                <span>Jarak Pengiriman</span>
+                <span id="summary-distance-display" class="font-bold text-gray-800">1 KM</span>
+              </div>
+              <div class="flex justify-between text-gray-500">
+                <span>Ongkir Dasar (≤ 5 KM)</span>
+                <span id="summary-shipping-base" class="font-medium text-gray-800">Rp 5.000</span>
+              </div>
+              <div id="row-shipping-extra" class="flex justify-between text-gray-500 hidden">
+                <span>Biaya Jauh (> 5 KM)</span>
+                <span id="summary-shipping-extra" class="font-bold text-amber-600">+ Rp 0</span>
+              </div>
+              <div id="row-shipping-discount" class="flex justify-between text-emerald-600 hidden">
+                <span>Potongan Belanja / Gratis Ongkir</span>
+                <span id="summary-shipping-discount" class="font-bold">- Rp 0</span>
+              </div>
+              <div class="h-px bg-gray-200/60 my-2"></div>
+              <div class="flex justify-between items-center text-sm">
+                <span class="font-bold text-gray-900">Total Pembayaran</span>
+                <span id="summary-total" class="font-extrabold text-emerald-600 text-base">Rp 0</span>
+              </div>
+            </div>
+
+            <!-- Submit Button (Direct to WhatsApp API) -->
+            <button 
+              type="submit" 
+              id="submit-whatsapp-btn"
+              class="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-850 text-white font-semibold py-3.5 px-4 rounded-xl shadow-lg shadow-emerald-100 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <!-- WhatsApp green color or custom icon -->
+              <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984a9.964 9.964 0 001.333 4.993L2 22l5.13-1.343a9.957 9.957 0 004.877 1.277h.005c5.507 0 9.99-4.479 9.99-9.985.001-2.67-1.036-5.18-2.92-7.065A9.923 9.923 0 0012.012 2zm5.735 14.156c-.315.881-1.545 1.612-2.133 1.71-.53.088-1.225.158-1.92.115-1.127-.07-2.392-.516-3.83-1.132-3.328-1.428-5.385-4.834-5.55-5.053-.166-.219-1.328-1.758-1.328-3.353 0-1.595.83-2.38 1.128-2.682.298-.301.663-.377.88-.377.217 0 .432.002.62.01.199.008.465-.078.729.56.264.639.904 2.203.982 2.361.079.158.132.342.027.551-.105.21-.158.342-.315.525-.157.183-.33.407-.472.546-.157.155-.32.324-.138.636.182.312.809 1.332 1.734 2.155.925.823 1.706 1.077 2.022 1.236.315.158.502.132.688-.084.186-.216.793-.923.996-1.239.202-.316.406-.264.685-.162.279.102 1.776.837 2.083.991.306.154.51.23.585.358.075.129.075.744-.24 1.625z"/>
+              </svg>
+              <span>Kirim Pesanan via WhatsApp</span>
+            </button>
+            <p class="text-[10px] text-gray-400 text-center mt-2.5">
+              Klik tombol di atas untuk membuka chat WhatsApp dan mengirim rincian belanjaanmu secara otomatis.
+            </p>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- FLOATING CART BUTTON (Only visible on mobile / small screens) -->
+    <div id="cart-toggle-mobile-container" class="sm:hidden fixed bottom-6 right-6 z-40">
+      <button 
+        type="button" 
+        id="cart-toggle-mobile-btn" 
+        class="bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-850 text-white p-4.5 rounded-full shadow-2xl border border-emerald-500/10 flex items-center justify-center relative cursor-pointer"
+        aria-label="Keranjang Belanja"
+      >
+        <i data-lucide="shopping-basket" class="w-6.5 h-6.5"></i>
+        <span 
+          id="cart-badge-mobile" 
+          class="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-black w-6.5 h-6.5 rounded-full flex items-center justify-center border-2 border-white shadow-md hidden"
+        >
+          0
+        </span>
+      </button>
+    </div>
+
+    <!-- FOOTER SECTION -->
+    <footer id="main-footer" class="bg-gray-900 text-gray-400 mt-auto border-t border-gray-850 py-10">
+      <div id="footer-container" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 gap-8">
+        
+        <!-- About Warung -->
+        <div id="footer-col-about" class="space-y-4">
+          <div class="flex items-center space-x-2.5">
+            <div class="w-9 h-9 rounded-lg bg-emerald-900/40 border border-emerald-800/40 flex items-center justify-center text-emerald-400">
+              <i data-lucide="store" class="w-5 h-5"></i>
+            </div>
+            <h4 class="font-display font-bold text-white text-base">Warung Kelontong Bawen</h4>
+          </div>
+          <p class="text-xs leading-relaxed max-w-sm">
+            Warung Kelontong Bawen menghadirkan kemudahan berbelanja sembako berkualitas dengan harga murah secara online. Kami melayani kebutuhan harian Anda secara cepat dan ramah.
+          </p>
+        </div>
+
+        <!-- Store Schedule & Operational Info -->
+        <div id="footer-col-hours" class="space-y-4">
+          <h4 class="font-display font-semibold text-white text-sm uppercase tracking-wider">Jam Operasional &amp; COD</h4>
+          <ul class="space-y-2.5 text-xs">
+            <li class="flex items-center gap-2">
+              <i data-lucide="clock" class="w-4 h-4 text-emerald-400 flex-shrink-0"></i>
+              <span>Setiap Hari: 07.00 - 21.00 WIB</span>
+            </li>
+            <li class="flex items-center gap-2">
+              <i data-lucide="truck" class="w-4 h-4 text-emerald-400 flex-shrink-0"></i>
+              <span>Pengiriman Bawen Kota &amp; sekitarnya</span>
+            </li>
+            <li class="flex items-center gap-2">
+              <i data-lucide="wallet" class="w-4 h-4 text-emerald-400 flex-shrink-0"></i>
+              <span>Bayar setelah barang sampai (COD)</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Address & Map/Location -->
+        <div id="footer-col-contact" class="space-y-4">
+          <h4 class="font-display font-semibold text-white text-sm uppercase tracking-wider">Hubungi Kami</h4>
+          <ul class="space-y-2.5 text-xs">
+            <li class="flex items-start gap-2">
+              <i data-lucide="map-pin" class="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0"></i>
+              <span>Ngawan Lor RT 02 RW 05 Bawen , Kabupaten Semarang, Jawa Tengah 50661</span>
+            </li>
+            <li class="flex items-center gap-2">
+              <i data-lucide="phone" class="w-4 h-4 text-emerald-400 flex-shrink-0"></i>
+              <span>Hubungi WA: 0895-3512-87974</span>
+            </li>
+          </ul>
+        </div>
+
+      </div>
+
+      <!-- Copyright Bottom Footer -->
+      <div id="footer-bottom" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 pt-6 border-t border-gray-800 text-center text-[11px] text-gray-500 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <p>&copy; 2026 Warung Kelontong Bawen. All Rights Reserved. Dikembangkan untuk kemudahan berbelanja Anda.</p>
+        <button type="button" id="admin-portal-btn" class="flex items-center gap-1.5 text-gray-400 hover:text-emerald-400 transition-colors text-xs font-semibold bg-gray-800 px-3.5 py-2 rounded-xl border border-gray-700 cursor-pointer shadow-sm">
+          <i data-lucide="lock" class="w-3.5 h-3.5"></i>
+          Kelola Toko (Admin)
+        </button>
+      </div>
+    </footer>
+
+    <!-- ADMIN PORTAL MODAL -->
+    <div 
+      id="admin-overlay" 
+      class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[150] hidden transition-opacity duration-300 flex items-center justify-center p-4"
+    >
+      <div 
+        id="admin-modal" 
+        class="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl border border-gray-100 overflow-hidden transform scale-95 transition-transform duration-300"
+      >
+        <!-- Modal Header -->
+        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+          <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
+              <i data-lucide="sliders" class="w-5 h-5"></i>
+            </div>
+            <div class="text-left">
+              <h3 class="font-display font-bold text-gray-900 text-sm sm:text-base">Panel Admin - Warung Bawen</h3>
+              <span class="text-xs text-gray-400 font-medium">Ubah nama produk, harga, dan stok langsung</span>
+            </div>
+          </div>
+          <button 
+            type="button" 
+            id="close-admin-btn" 
+            class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+            aria-label="Tutup Panel Admin"
+          >
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <!-- Passcode Gate (Active initially) -->
+        <div id="admin-gate" class="p-6 flex flex-col items-center justify-center text-center max-w-sm mx-auto my-12 w-full">
+          <div class="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mb-4">
+            <i data-lucide="shield-check" class="w-8 h-8"></i>
+          </div>
+          <h4 class="font-display font-bold text-gray-900 text-base mb-1">Masuk sebagai Admin</h4>
+          <p class="text-xs text-gray-400 mb-6 leading-relaxed">Masukkan PIN keamanan untuk mengedit nama produk, harga, dan stok barang.</p>
+          
+          <div class="w-full space-y-3">
+            <input 
+              type="password" 
+              id="admin-pin-input" 
+              placeholder="PIN Keamanan (Default: 1234)" 
+              class="w-full text-center tracking-widest border border-gray-200 focus:border-emerald-500 focus:outline-none rounded-xl px-4 py-3 text-sm font-semibold"
+            />
+            <p id="admin-pin-error" class="text-xs text-red-500 font-medium hidden">PIN yang Anda masukkan salah!</p>
+            <button 
+              type="button" 
+              id="admin-login-btn"
+              class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl transition-all shadow-md cursor-pointer text-sm"
+            >
+              Masuk Sekarang
+            </button>
+          </div>
+        </div>
+
+        <!-- Admin Content (Hidden initially) -->
+        <div id="admin-main-content" class="flex-1 overflow-hidden hidden flex flex-col">
+          <!-- Admin Tabs Header -->
+          <div class="px-6 border-b border-gray-100 flex gap-4 bg-white flex-shrink-0">
+            <button 
+              type="button" 
+              id="admin-tab-list" 
+              class="border-b-2 border-emerald-600 text-emerald-600 font-bold text-xs sm:text-sm py-3 px-1 transition-all cursor-pointer"
+            >
+              Daftar Produk
+            </button>
+            <button 
+              type="button" 
+              id="admin-tab-add" 
+              class="border-b-2 border-transparent text-gray-400 hover:text-gray-600 font-semibold text-xs sm:text-sm py-3 px-1 transition-all cursor-pointer flex items-center gap-1.5"
+            >
+              <i data-lucide="plus-circle" class="w-4 h-4"></i>
+              Tambah Produk Baru
+            </button>
+          </div>
+
+          <!-- TAB 1: LIST PRODUCTS CONTAINER -->
+          <div id="admin-list-tab-content" class="flex-1 flex flex-col overflow-hidden">
+            <!-- Search & Reset Top Bar -->
+            <div class="p-4 border-b border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white">
+              <div class="relative w-full sm:max-w-xs">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                  <i data-lucide="search" class="w-4 h-4"></i>
+                </div>
+                <input 
+                  type="text" 
+                  id="admin-search-input" 
+                  placeholder="Cari produk admin..." 
+                  class="w-full bg-gray-50 border border-gray-200 focus:border-emerald-500 focus:bg-white rounded-lg py-2 pl-9 pr-4 text-xs transition-colors focus:outline-none"
+                />
+              </div>
+              
+              <div class="flex items-center gap-2 w-full sm:w-auto">
+                <button 
+                  type="button" 
+                  id="admin-reset-data-btn"
+                  class="flex-1 sm:flex-initial bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-850 font-semibold text-xs py-2 px-4 rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                  title="Kembalikan semua produk ke data awal"
+                >
+                  <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                  Reset Default
+                </button>
+                <button 
+                  type="button" 
+                  id="admin-save-all-btn"
+                  class="flex-1 sm:flex-initial bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs py-2 px-4 rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
+                >
+                  <i data-lucide="save" class="w-3.5 h-3.5"></i>
+                  Simpan Perubahan
+                </button>
+              </div>
+            </div>
+
+            <!-- Product Editing List -->
+            <div class="flex-1 overflow-y-auto p-4 bg-gray-50">
+              <!-- Table Headers for Desktop -->
+              <div class="hidden md:grid md:grid-cols-12 gap-4 px-4 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                <div class="col-span-5">Nama Produk &amp; Unit</div>
+                <div class="col-span-2 text-right">Kategori</div>
+                <div class="col-span-2 text-right">Harga (Rp)</div>
+                <div class="col-span-2 text-right">Stok</div>
+                <div class="col-span-1 text-center">Aksi</div>
+              </div>
+              
+              <div id="admin-products-list" class="space-y-3 mt-1">
+                <!-- Rendered via JS -->
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 2: ADD PRODUCT CONTAINER -->
+          <div id="admin-add-tab-content" class="flex-1 overflow-y-auto p-4 bg-gray-50 hidden">
+            <!-- Form -->
+            <form id="admin-add-product-form" class="max-w-xl mx-auto bg-white p-6 rounded-2xl border border-gray-150 shadow-sm space-y-4">
+              <h4 class="font-display font-bold text-gray-900 text-sm sm:text-base border-b border-gray-100 pb-2 flex items-center gap-2 text-left">
+                <i data-lucide="plus-circle" class="w-5 h-5 text-emerald-600"></i>
+                Form Tambah Produk Sembako Baru
+              </h4>
+              
+              <div class="text-left">
+                <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Nama Produk *</label>
+                <input type="text" id="add-prod-name" required placeholder="Contoh: Beras Rojo Lele Premium" class="w-full border border-gray-200 focus:border-emerald-500 focus:outline-none rounded-xl px-3.5 py-2.5 text-xs transition-colors animate-none" />
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
+                <div>
+                  <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Kategori *</label>
+                  <select id="add-prod-category" required class="w-full border border-gray-200 focus:border-emerald-500 focus:outline-none rounded-xl px-2.5 py-2.5 text-xs bg-white text-gray-700 font-semibold transition-colors cursor-pointer">
+                    <option value="Beras" selected>Beras</option>
+                    <option value="Minyak Goreng">Minyak Goreng</option>
+                    <option value="Telur">Telur</option>
+                    <option value="Gula">Gula</option>
+                    <option value="Mie Instan">Mie Instan</option>
+                    <option value="Minuman">Minuman</option>
+                    <option value="Snack">Snack</option>
+                    <option value="Sabun dan kebutuhan rumah tangga">Sabun dan kebutuhan rumah tangga</option>
+                    <option value="Lain-lain">Lain-lain</option>
+                    <option value="__new_category__">+ Buat Kategori Baru...</option>
+                  </select>
+                  
+                  <!-- Custom Category Input (Hidden by default) -->
+                  <div id="new-category-input-container" class="mt-2 hidden">
+                    <input 
+                      type="text" 
+                      id="add-prod-new-category" 
+                      placeholder="Ketik kategori baru..." 
+                      class="w-full border border-emerald-400 focus:border-emerald-600 focus:outline-none rounded-xl px-3 py-2 text-xs transition-colors bg-emerald-50/20" 
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Unit / Ukuran *</label>
+                  <input type="text" id="add-prod-unit" required placeholder="Contoh: 1 Kg, 1 Pcs, 500 Gram" class="w-full border border-gray-200 focus:border-emerald-500 focus:outline-none rounded-xl px-3.5 py-2.5 text-xs transition-colors" />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
+                <div>
+                  <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Harga (Rp) *</label>
+                  <input type="number" id="add-prod-price" required min="0" placeholder="Contoh: 15000" class="w-full border border-gray-200 focus:border-emerald-500 focus:outline-none rounded-xl px-3.5 py-2.5 text-xs transition-colors" />
+                </div>
+                <div>
+                  <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Stok Awal *</label>
+                  <input type="number" id="add-prod-stock" required min="0" placeholder="Contoh: 50" class="w-full border border-gray-200 focus:border-emerald-500 focus:outline-none rounded-xl px-3.5 py-2.5 text-xs transition-colors" />
+                </div>
+              </div>
+
+              <div class="text-left space-y-2.5">
+                <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Foto Produk *</label>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <!-- Pilihan 1: Upload File -->
+                  <div class="border-2 border-dashed border-gray-200 rounded-2xl p-4 flex flex-col items-center justify-center bg-gray-50 hover:bg-emerald-50/30 hover:border-emerald-300 transition-all relative group cursor-pointer text-center">
+                    <div class="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
+                      <i data-lucide="image-up" class="w-5 h-5"></i>
+                    </div>
+                    <span class="text-[10px] font-bold text-gray-700">Upload dari HP / Komputer</span>
+                    <span class="text-[9px] text-gray-400 mt-0.5">Format JPG/PNG (Maks 2MB)</span>
+                    <input type="file" id="add-prod-file-input" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
+                    <!-- Selected File Name indicator -->
+                    <div id="add-prod-file-name-container" class="mt-2 hidden bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg text-[9px] font-bold flex items-center gap-1 max-w-full">
+                      <i data-lucide="check" class="w-3 h-3 text-emerald-600 flex-shrink-0"></i>
+                      <span id="add-prod-file-name" class="truncate max-w-[120px]">file-name.png</span>
+                    </div>
+                  </div>
+                  
+                  <!-- Pilihan 2: Paste URL Gambar -->
+                  <div class="flex flex-col justify-center bg-white p-3 border border-gray-150 rounded-2xl space-y-2">
+                    <span class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Atau Tempel (Paste) URL Gambar:</span>
+                    <input type="url" id="add-prod-image" placeholder="https://example.com/gambar.jpg" class="w-full border border-gray-200 focus:border-emerald-500 focus:outline-none rounded-xl px-3 py-2.5 text-xs transition-colors" />
+                    <p class="text-[9px] text-gray-400 leading-normal">Gunakan URL gambar dari internet jika tidak ingin upload file sendiri, atau kosongkan untuk gambar bawaan.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex items-center space-x-2 pt-1 text-left">
+                <input type="checkbox" id="add-prod-bestseller" class="rounded text-emerald-600 focus:ring-emerald-500 h-4 w-4 border-gray-300 cursor-pointer" />
+                <label for="add-prod-bestseller" class="text-xs text-gray-600 font-semibold cursor-pointer">Tandai sebagai Produk Terlaris (Best Seller)</label>
+              </div>
+
+              <div class="pt-2">
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-md text-xs cursor-pointer flex items-center justify-center gap-1.5">
+                  <i data-lucide="plus" class="w-4.5 h-4.5"></i>
+                  Simpan &amp; Publish Produk Baru
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Script loading -->
+    <script src="script.js"></script>
+  </body>
+</html>
