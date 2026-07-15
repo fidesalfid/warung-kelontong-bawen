@@ -28,6 +28,10 @@
     <!-- Custom Style Sheet -->
     <link rel="stylesheet" href="style.css">
     
+    <!-- Leaflet CSS & JS for OpenStreetMap -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
     <!-- Lucide Icons CDN -->
     <script src="https://unpkg.com/lucide@latest"></script>
   </head>
@@ -235,6 +239,162 @@
         </div>
       </section>
 
+      <!-- CUSTOMER REVIEWS SECTION -->
+      <section id="reviews-section" class="mb-12 bg-white rounded-3xl p-6 sm:p-8 border border-gray-150/80 shadow-xs">
+        <div id="reviews-header" class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div>
+            <h3 class="font-display font-bold text-gray-900 text-base sm:text-lg flex items-center gap-2">
+              <span class="w-3.5 h-6 rounded bg-emerald-600 block"></span>
+              Ulasan Pelanggan Setia
+            </h3>
+            <p class="text-xs text-gray-400 mt-1">Umpan balik asli dari pelanggan Warung Bawen</p>
+          </div>
+          <button 
+            type="button" 
+            id="btn-toggle-review-form" 
+            class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold px-4 py-2.5 rounded-xl transition-all duration-150 flex items-center gap-1.5 self-start sm:self-auto cursor-pointer shadow-sm"
+          >
+            <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+            Tulis Ulasan
+          </button>
+        </div>
+
+        <!-- Form Tulis Ulasan (Hidden by default, toggled with JS) -->
+        <div id="review-form-container" class="hidden mb-6 p-4 sm:p-5 bg-gray-50 rounded-2xl border border-gray-150 relative">
+          <h4 class="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Tulis Ulasan Baru Anda</h4>
+          <form id="add-review-form" class="space-y-3.5">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label for="review-author" class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Nama Anda *</label>
+                <input 
+                  type="text" 
+                  id="review-author" 
+                  required 
+                  placeholder="Contoh: Ibu Siti" 
+                  class="w-full border border-gray-200 focus:border-emerald-500 focus:outline-none rounded-xl px-3 py-2.5 text-xs bg-white transition-colors"
+                />
+              </div>
+              <div>
+                <label for="review-rating" class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Rating Bintang *</label>
+                <div class="flex items-center gap-1.5 py-1.5">
+                  <input type="hidden" id="review-rating-value" value="5">
+                  <div id="star-rating-selector" class="flex gap-1">
+                    <!-- 5 stars selector -->
+                    <button type="button" data-rating="1" class="text-amber-400 focus:outline-none cursor-pointer hover:scale-110 transition-transform"><i data-lucide="star" class="w-5 h-5 fill-current"></i></button>
+                    <button type="button" data-rating="2" class="text-amber-400 focus:outline-none cursor-pointer hover:scale-110 transition-transform"><i data-lucide="star" class="w-5 h-5 fill-current"></i></button>
+                    <button type="button" data-rating="3" class="text-amber-400 focus:outline-none cursor-pointer hover:scale-110 transition-transform"><i data-lucide="star" class="w-5 h-5 fill-current"></i></button>
+                    <button type="button" data-rating="4" class="text-amber-400 focus:outline-none cursor-pointer hover:scale-110 transition-transform"><i data-lucide="star" class="w-5 h-5 fill-current"></i></button>
+                    <button type="button" data-rating="5" class="text-amber-400 focus:outline-none cursor-pointer hover:scale-110 transition-transform"><i data-lucide="star" class="w-5 h-5 fill-current"></i></button>
+                  </div>
+                  <span id="star-rating-text" class="text-[11px] font-bold text-gray-600 ml-2">Sangat Puas (5/5)</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label for="review-comment" class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Ulasan / Pendapat Anda *</label>
+              <textarea 
+                id="review-comment" 
+                required 
+                rows="3" 
+                placeholder="Tulis ulasan Anda mengenai pelayanan, harga, kualitas barang, atau kecepatan kirim..." 
+                class="w-full border border-gray-200 focus:border-emerald-500 focus:outline-none rounded-xl px-3 py-2.5 text-xs bg-white transition-colors resize-none"
+              ></textarea>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-1">
+              <button 
+                type="button" 
+                id="btn-cancel-review" 
+                class="px-4 py-2.5 border border-gray-200 text-gray-500 hover:bg-gray-100 text-xs font-semibold rounded-xl transition-all cursor-pointer"
+              >
+                Batal
+              </button>
+              <button 
+                type="submit" 
+                class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer"
+              >
+                Kirim Ulasan
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Rating Summary Box & Review Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+          <!-- Left side: Stat card -->
+          <div class="md:col-span-4 bg-gray-50 border border-gray-100/80 rounded-2xl p-5 flex flex-col items-center justify-center text-center">
+            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">RATA-RATA RATING</span>
+            <div class="flex items-baseline gap-1.5 mb-1.5">
+              <span id="avg-rating-big" class="text-4xl font-extrabold text-gray-800">4.9</span>
+              <span class="text-sm text-gray-400 font-medium">/ 5</span>
+            </div>
+            
+            <!-- Stars row -->
+            <div id="avg-stars-container" class="flex gap-0.5 text-amber-400 mb-2">
+              <i data-lucide="star" class="w-4 h-4 fill-current"></i>
+              <i data-lucide="star" class="w-4 h-4 fill-current"></i>
+              <i data-lucide="star" class="w-4 h-4 fill-current"></i>
+              <i data-lucide="star" class="w-4 h-4 fill-current"></i>
+              <i data-lucide="star" class="w-4 h-4 fill-current"></i>
+            </div>
+            
+            <p id="total-reviews-count" class="text-[11px] text-gray-500 font-medium">Berdasarkan 3 ulasan pelanggan</p>
+            
+            <!-- Rating bar distribution -->
+            <div class="w-full mt-4 space-y-1.5 max-w-[200px]">
+              <div class="flex items-center gap-2 text-[10px] text-gray-500">
+                <span class="w-3">5</span>
+                <i data-lucide="star" class="w-2.5 h-2.5 fill-current text-amber-400"></i>
+                <div class="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div id="bar-5-star" class="h-full bg-amber-400 rounded-full" style="width: 100%;"></div>
+                </div>
+                <span id="count-5-star" class="w-4 text-right">3</span>
+              </div>
+              <div class="flex items-center gap-2 text-[10px] text-gray-500">
+                <span class="w-3">4</span>
+                <i data-lucide="star" class="w-2.5 h-2.5 fill-current text-amber-400"></i>
+                <div class="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div id="bar-4-star" class="h-full bg-amber-400 rounded-full" style="width: 0%;"></div>
+                </div>
+                <span id="count-4-star" class="w-4 text-right">0</span>
+              </div>
+              <div class="flex items-center gap-2 text-[10px] text-gray-500">
+                <span class="w-3">3</span>
+                <i data-lucide="star" class="w-2.5 h-2.5 fill-current text-amber-400"></i>
+                <div class="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div id="bar-3-star" class="h-full bg-amber-400 rounded-full" style="width: 0%;"></div>
+                </div>
+                <span id="count-3-star" class="w-4 text-right">0</span>
+              </div>
+              <div class="flex items-center gap-2 text-[10px] text-gray-500">
+                <span class="w-3">2</span>
+                <i data-lucide="star" class="w-2.5 h-2.5 fill-current text-amber-400"></i>
+                <div class="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div id="bar-2-star" class="h-full bg-amber-400 rounded-full" style="width: 0%;"></div>
+                </div>
+                <span id="count-2-star" class="w-4 text-right">0</span>
+              </div>
+              <div class="flex items-center gap-2 text-[10px] text-gray-500">
+                <span class="w-3">1</span>
+                <i data-lucide="star" class="w-2.5 h-2.5 fill-current text-amber-400"></i>
+                <div class="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div id="bar-1-star" class="h-full bg-amber-400 rounded-full" style="width: 0%;"></div>
+                </div>
+                <span id="count-1-star" class="w-4 text-right">0</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right side: List of reviews -->
+          <div class="md:col-span-8 space-y-4">
+            <div id="reviews-list-container" class="space-y-3 max-h-[360px] overflow-y-auto pr-1">
+              <!-- Reviews rendered dynamically -->
+            </div>
+          </div>
+        </div>
+      </section>
+
     </main>
 
     <!-- SHOPPING CART SLIDER DRAWER -->
@@ -247,7 +407,7 @@
     <!-- Drawer container -->
     <div 
       id="cart-drawer" 
-      class="fixed inset-y-0 right-0 max-w-md w-full h-full bg-white shadow-2xl z-55 flex flex-col cart-drawer transform translate-x-full border-l border-gray-100"
+      class="fixed inset-y-0 right-0 max-w-md w-full h-full bg-white shadow-2xl z-[100] flex flex-col cart-drawer transform translate-x-full border-l border-gray-100"
     >
       <!-- Drawer Header -->
       <div id="cart-header" class="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
@@ -334,6 +494,60 @@
                   required 
                   class="w-full border border-gray-200 focus:border-emerald-500 focus:outline-none rounded-xl px-3 py-2 text-xs transition-colors resize-none"
                 ></textarea>
+                
+                <!-- GPS & Map Helpers -->
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <button 
+                    type="button" 
+                    id="btn-get-gps" 
+                    class="flex-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/60 font-semibold py-2 px-3 rounded-xl transition-all text-[11px] flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                  >
+                    <i data-lucide="map-pin" class="w-3.5 h-3.5"></i>
+                    Gunakan GPS Saya
+                  </button>
+                  <button 
+                    type="button" 
+                    id="btn-toggle-map" 
+                    class="flex-1 bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 font-semibold py-2 px-3 rounded-xl transition-all text-[11px] flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                  >
+                    <i data-lucide="map" class="w-3.5 h-3.5"></i>
+                    Peta Lokasi Toko &amp; Rumah
+                  </button>
+                </div>
+
+                <!-- Leaflet Map Container -->
+                <div id="map-picker-container" class="hidden mt-2.5 border border-gray-200 rounded-2xl overflow-hidden bg-gray-50 relative">
+                  <div class="bg-gray-100 px-3 py-2 border-b border-gray-150 flex items-center justify-between">
+                    <span class="text-[10px] font-bold text-gray-600 uppercase tracking-wider">Geser Pin Biru Ke Lokasi Rumah Anda</span>
+                    <button type="button" id="btn-close-map" class="text-gray-400 hover:text-gray-600 cursor-pointer">
+                      <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                    </button>
+                  </div>
+                  
+                  <!-- Address search input inside map -->
+                  <div class="p-2 bg-white border-b border-gray-100 flex gap-1.5">
+                    <input 
+                      type="text" 
+                      id="map-search-input" 
+                      placeholder="Ketik jalan, nama desa, atau kelurahan..." 
+                      class="flex-1 border border-gray-200 focus:border-emerald-500 focus:outline-none rounded-xl px-2.5 py-1.5 text-[11px] transition-colors"
+                    />
+                    <button 
+                      type="button" 
+                      id="btn-map-search" 
+                      class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-xl text-[11px] cursor-pointer"
+                    >
+                      Cari
+                    </button>
+                  </div>
+
+                  <!-- Actual Leaflet Map element -->
+                  <div id="checkout-map" class="w-full h-48" style="z-index: 1;"></div>
+                  
+                  <div class="bg-emerald-50/90 backdrop-blur-xs px-3 py-2 text-[10px] text-emerald-800 leading-relaxed border-t border-emerald-100 flex items-center justify-between">
+                    <span id="map-status-text" class="font-medium">Memuat peta...</span>
+                  </div>
+                </div>
               </div>
 
               <!-- Jarak Pengiriman (KM) Selector -->
@@ -531,7 +745,7 @@
     <!-- ADMIN PORTAL MODAL -->
     <div 
       id="admin-overlay" 
-      class="fixed inset-0 bg-black/60 backdrop-blur-sm z-55 hidden transition-opacity duration-300 flex items-center justify-center p-4"
+      class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[150] hidden transition-opacity duration-300 flex items-center justify-center p-4"
     >
       <div 
         id="admin-modal" 
@@ -686,7 +900,18 @@
                     <option value="Snack">Snack</option>
                     <option value="Sabun dan kebutuhan rumah tangga">Sabun dan kebutuhan rumah tangga</option>
                     <option value="Lain-lain">Lain-lain</option>
+                    <option value="__new_category__">+ Buat Kategori Baru...</option>
                   </select>
+                  
+                  <!-- Custom Category Input (Hidden by default) -->
+                  <div id="new-category-input-container" class="mt-2 hidden">
+                    <input 
+                      type="text" 
+                      id="add-prod-new-category" 
+                      placeholder="Ketik kategori baru..." 
+                      class="w-full border border-emerald-400 focus:border-emerald-600 focus:outline-none rounded-xl px-3 py-2 text-xs transition-colors bg-emerald-50/20" 
+                    />
+                  </div>
                 </div>
                 <div>
                   <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Unit / Ukuran *</label>
@@ -705,10 +930,32 @@
                 </div>
               </div>
 
-              <div class="text-left">
-                <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">URL Gambar Produk (Opsional)</label>
-                <input type="url" id="add-prod-image" placeholder="Paste link gambar (https://...), kosongkan untuk gambar default" class="w-full border border-gray-200 focus:border-emerald-500 focus:outline-none rounded-xl px-3.5 py-2.5 text-xs transition-colors" />
-                <p class="text-[10px] text-gray-400 mt-1">Anda bisa salin link gambar dari google atau unspash, atau kosongkan saja untuk memakai gambar bawaan.</p>
+              <div class="text-left space-y-2.5">
+                <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Foto Produk *</label>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <!-- Pilihan 1: Upload File -->
+                  <div class="border-2 border-dashed border-gray-200 rounded-2xl p-4 flex flex-col items-center justify-center bg-gray-50 hover:bg-emerald-50/30 hover:border-emerald-300 transition-all relative group cursor-pointer text-center">
+                    <div class="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
+                      <i data-lucide="image-up" class="w-5 h-5"></i>
+                    </div>
+                    <span class="text-[10px] font-bold text-gray-700">Upload dari HP / Komputer</span>
+                    <span class="text-[9px] text-gray-400 mt-0.5">Format JPG/PNG (Maks 2MB)</span>
+                    <input type="file" id="add-prod-file-input" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
+                    <!-- Selected File Name indicator -->
+                    <div id="add-prod-file-name-container" class="mt-2 hidden bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg text-[9px] font-bold flex items-center gap-1 max-w-full">
+                      <i data-lucide="check" class="w-3 h-3 text-emerald-600 flex-shrink-0"></i>
+                      <span id="add-prod-file-name" class="truncate max-w-[120px]">file-name.png</span>
+                    </div>
+                  </div>
+                  
+                  <!-- Pilihan 2: Paste URL Gambar -->
+                  <div class="flex flex-col justify-center bg-white p-3 border border-gray-150 rounded-2xl space-y-2">
+                    <span class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Atau Tempel (Paste) URL Gambar:</span>
+                    <input type="url" id="add-prod-image" placeholder="https://example.com/gambar.jpg" class="w-full border border-gray-200 focus:border-emerald-500 focus:outline-none rounded-xl px-3 py-2.5 text-xs transition-colors" />
+                    <p class="text-[9px] text-gray-400 leading-normal">Gunakan URL gambar dari internet jika tidak ingin upload file sendiri, atau kosongkan untuk gambar bawaan.</p>
+                  </div>
+                </div>
               </div>
 
               <div class="flex items-center space-x-2 pt-1 text-left">

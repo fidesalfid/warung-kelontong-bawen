@@ -9,6 +9,23 @@ const OWNER_WA_NUMBER = '62895351287974';
 const ADMIN_PIN = 'Filiv2212@'; // PIN Keamanan untuk masuk ke Panel Admin
 const FREE_SHIPPING_MINIMUM = 50000;
 const FLAT_SHIPPING_FEE = 5000;
+const BASE_CATEGORIES = [
+  'Beras', 
+  'Minyak Goreng', 
+  'Telur', 
+  'Gula', 
+  'Mie Instan', 
+  'Minuman', 
+  'Snack', 
+  'Sabun dan kebutuhan rumah tangga', 
+  'Lain-lain'
+];
+const STORE_COORDS = { lat: -7.2474, lng: 110.4286 }; // Ngawan Lor, Bawen
+let leafletMap = null;
+let userMarker = null;
+let storeMarker = null;
+let mapInitialized = false;
+let selectedUserCoords = null;
 // ========================================================
 
 // --- INITIAL PRODUCT DATABASE ---
@@ -343,6 +360,41 @@ function getCategoryEmoji(cat) {
     case 'Snack': return '🍿';
     case 'Sabun dan kebutuhan rumah tangga': return '🧼';
     default: return '📦';
+  }
+}
+
+// Render dynamic dropdown options in admin panel
+function renderAdminCategoryDropdown() {
+  const select = document.getElementById('add-prod-category');
+  if (!select) return;
+
+  // Ambil kategori unik yang ada di produk saat ini
+  const currentCategories = [...new Set(PRODUCTS.map(p => p.category))];
+
+  // Gabungkan kategori dasar dengan kategori yang ada saat ini
+  const allCategories = [...new Set([...BASE_CATEGORIES, ...currentCategories])];
+
+  const prevValue = select.value;
+
+  select.innerHTML = '';
+  allCategories.forEach(cat => {
+    const opt = document.createElement('option');
+    opt.value = cat;
+    opt.innerText = cat;
+    if (cat === 'Beras' && !prevValue) {
+      opt.selected = true;
+    }
+    select.appendChild(opt);
+  });
+
+  // Tambahkan opsi bikin baru
+  const optNew = document.createElement('option');
+  optNew.value = '__new_category__';
+  optNew.innerText = '+ Buat Kategori Baru...';
+  select.appendChild(optNew);
+
+  if (prevValue && (allCategories.includes(prevValue) || prevValue === '__new_category__')) {
+    select.value = prevValue;
   }
 }
 
@@ -719,6 +771,7 @@ function updateCartUI() {
 function openCart() {
   cartDrawer.classList.remove('translate-x-full');
   cartDrawer.classList.add('translate-x-0');
+  cartDrawer.style.transform = 'translateX(0)'; // Force style fallback to fix any rendering / blur issue in iframe
   cartOverlay.classList.remove('hidden');
   document.body.style.overflow = 'hidden'; // Stop background scroll
 }
@@ -726,6 +779,7 @@ function openCart() {
 function closeCart() {
   cartDrawer.classList.add('translate-x-full');
   cartDrawer.classList.remove('translate-x-0');
+  cartDrawer.style.transform = 'translateX(100%)'; // Force style fallback
   cartOverlay.classList.add('hidden');
   document.body.style.overflow = '';
 }
@@ -744,6 +798,9 @@ function openAdmin() {
   
   document.body.style.overflow = 'hidden';
   adminPinInput.focus();
+  
+  // Inisialisasi dropdown kategori saat admin dibuka
+  renderAdminCategoryDropdown();
 }
 
 function closeAdmin() {
@@ -758,6 +815,7 @@ function loginAdmin() {
     adminGate.classList.add('hidden');
     adminMainContent.classList.remove('hidden');
     renderAdminProducts();
+    renderAdminCategoryDropdown(); // Pastikan dropdown diperbarui setelah login
   } else {
     adminPinError.classList.remove('hidden');
     adminPinInput.focus();
@@ -1014,14 +1072,64 @@ if (adminTabList && adminTabAdd) {
   });
 }
 
-// Add New Product Form Submit
+// Add New Product Form Submit with upload photo and custom categories support
+let uploadedImageBase64 = "";
+
+const fileInput = document.getElementById('add-prod-file-input');
+const fileNameContainer = document.getElementById('add-prod-file-name-container');
+const fileNameSpan = document.getElementById('add-prod-file-name');
+
+if (fileInput) {
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) { // 2MB limit to prevent localStorage overflow
+        showToast("Ukuran foto maksimal 2MB!");
+        fileInput.value = "";
+        if (fileNameContainer) fileNameContainer.classList.add('hidden');
+        uploadedImageBase64 = "";
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        uploadedImageBase64 = event.target.result;
+        if (fileNameSpan) fileNameSpan.innerText = file.name;
+        if (fileNameContainer) fileNameContainer.classList.remove('hidden');
+        showToast("Foto berhasil dipilih!");
+      };
+      reader.readAsDataURL(file);
+    } else {
+      uploadedImageBase64 = "";
+      if (fileNameContainer) fileNameContainer.classList.add('hidden');
+    }
+  });
+}
+
+// Listen to category dropdown change
+const addProdCategorySelect = document.getElementById('add-prod-category');
+const newCategoryInputContainer = document.getElementById('new-category-input-container');
+const addProdNewCategoryInput = document.getElementById('add-prod-new-category');
+
+if (addProdCategorySelect) {
+  addProdCategorySelect.addEventListener('change', () => {
+    if (addProdCategorySelect.value === '__new_category__') {
+      newCategoryInputContainer?.classList.remove('hidden');
+      addProdNewCategoryInput?.focus();
+      addProdNewCategoryInput?.setAttribute('required', 'true');
+    } else {
+      newCategoryInputContainer?.classList.add('hidden');
+      addProdNewCategoryInput?.removeAttribute('required');
+    }
+  });
+}
+
 const adminAddProductForm = document.getElementById('admin-add-product-form');
 if (adminAddProductForm) {
   adminAddProductForm.addEventListener('submit', (e) => {
     e.preventDefault();
 
     const name = document.getElementById('add-prod-name').value.trim();
-    const category = document.getElementById('add-prod-category').value;
+    let category = document.getElementById('add-prod-category').value;
     const unit = document.getElementById('add-prod-unit').value.trim();
     const price = parseInt(document.getElementById('add-prod-price').value) || 0;
     const stock = parseInt(document.getElementById('add-prod-stock').value) || 0;
@@ -1033,12 +1141,26 @@ if (adminAddProductForm) {
       return;
     }
 
+    if (category === '__new_category__') {
+      const newCat = addProdNewCategoryInput.value.trim();
+      if (!newCat) {
+        showToast("Ketik nama kategori baru Anda!");
+        return;
+      }
+      category = newCat;
+    }
+
+    if (uploadedImageBase64) {
+      image = uploadedImageBase64;
+    }
+
     if (!image) {
       // default fallbacks depending on category
-      if (category === 'Beras') image = 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&q=80&w=400';
-      else if (category === 'Minyak Goreng') image = 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&q=80&w=400';
-      else if (category === 'Telur') image = 'https://images.unsplash.com/photo-1516448620398-c5f44bf9f441?auto=format&fit=crop&q=80&w=400';
-      else if (category === 'Gula') image = 'https://images.unsplash.com/photo-1581781870027-04212e231e96?auto=format&fit=crop&q=80&w=400';
+      const catLower = category.toLowerCase();
+      if (catLower.includes('beras')) image = 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&q=80&w=400';
+      else if (catLower.includes('minyak')) image = 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&q=80&w=400';
+      else if (catLower.includes('telur')) image = 'https://images.unsplash.com/photo-1516448620398-c5f44bf9f441?auto=format&fit=crop&q=80&w=400';
+      else if (catLower.includes('gula')) image = 'https://images.unsplash.com/photo-1581781870027-04212e231e96?auto=format&fit=crop&q=80&w=400';
       else image = 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=400';
     }
 
@@ -1057,7 +1179,15 @@ if (adminAddProductForm) {
     PRODUCTS.unshift(newProduct);
     localStorage.setItem('warung_bawen_products', JSON.stringify(PRODUCTS));
 
+    // Reset uploaded state & UI indicators
+    uploadedImageBase64 = "";
+    if (fileNameContainer) fileNameContainer.classList.add('hidden');
+    newCategoryInputContainer?.classList.add('hidden');
+    addProdNewCategoryInput?.removeAttribute('required');
+
     adminAddProductForm.reset();
+    renderCategories();
+    renderAdminCategoryDropdown();
     renderProducts();
     renderAdminProducts();
     showToast(`Produk "${name}" berhasil ditambahkan!`);
@@ -1180,12 +1310,18 @@ checkoutForm.addEventListener('submit', (e) => {
   const grandTotal = subtotal + totalShipping;
   const today = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
+  // Generate Google Maps URL if buyer picked a location on map
+  let mapLinkLine = '';
+  if (selectedUserCoords) {
+    mapLinkLine = `\n*Peta Lokasi Rumah:* https://www.google.com/maps?q=${selectedUserCoords.lat},${selectedUserCoords.lng}`;
+  }
+
   // Format the WhatsApp text
   const waMessage = `*PESANAN WARUNG KELONTONG BAWEN*
 ----------------------------------------
 *Hari/Tanggal:* ${today}
 *Nama Pembeli:* ${buyerName}
-*Alamat Kirim:* ${buyerAddress}
+*Alamat Kirim:* ${buyerAddress}${mapLinkLine}
 *Jarak Kirim:* ${distance} KM
 *Metode Bayar:* ${buyerPayment}
 *Catatan:* ${buyerNotes}
@@ -1212,6 +1348,7 @@ _Mohon segera diproses ya Kak, barang dikirim ke alamat saya di atas. Terima kas
   renderProducts();
   closeCart();
   checkoutForm.reset();
+  selectedUserCoords = null; // Reset map coordinates for next session
 
   showToast('Pesanan siap! Mengalihkan ke WhatsApp...');
   
@@ -1221,9 +1358,585 @@ _Mohon segera diproses ya Kak, barang dikirim ke alamat saya di atas. Terima kas
   }, 1000);
 });
 
+// ==================== INTERACTIVE MAPS & GEOLOCATION (OPENSTREETMAP) ====================
+
+// Calculate distance via Haversine formula
+function getHaversineDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371; // Radius of the Earth in KM
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+// Update UI and distance based on coordinates
+function updateLocationFromCoords(lat, lng, knownAddressName = null) {
+  selectedUserCoords = { lat, lng };
+  const distanceSelectElement = document.getElementById('checkout-distance-select');
+  const distanceCustomInputElement = document.getElementById('checkout-distance-custom-input');
+  const distanceCustomContainerElement = document.getElementById('checkout-distance-custom-container');
+  const mapStatusTextElement = document.getElementById('map-status-text');
+  const addressTextareaElement = document.getElementById('checkout-address');
+
+  // Calculate straight line distance
+  const straightDistance = getHaversineDistance(STORE_COORDS.lat, STORE_COORDS.lng, lat, lng);
+  // Scale straight line distance by 1.3 to estimate actual driving road distance
+  let roadDistance = Math.round((straightDistance * 1.3) * 10) / 10;
+  if (roadDistance < 0.5) roadDistance = 0.5; // Minimum 0.5 KM
+
+  // Update inputs
+  if (distanceSelectElement) {
+    distanceSelectElement.value = 'custom';
+    if (distanceCustomContainerElement) distanceCustomContainerElement.classList.remove('hidden');
+    if (distanceCustomInputElement) {
+      distanceCustomInputElement.value = roadDistance;
+    }
+  }
+
+  // Live recalculate shipping prices & grand total
+  updateCartUI();
+
+  if (mapStatusTextElement) {
+    mapStatusTextElement.innerText = `Jarak terpilih: ${roadDistance} KM. Mengambil detail alamat...`;
+  }
+
+  if (knownAddressName) {
+    if (addressTextareaElement) addressTextareaElement.value = knownAddressName;
+    if (mapStatusTextElement) {
+      mapStatusTextElement.innerText = `Jarak terpilih: ${roadDistance} KM. Alamat diupdate!`;
+    }
+  } else {
+    // Reverse geocode to get a readable address name using free OpenStreetMap Nominatim API
+    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`;
+    fetch(url, {
+      headers: {
+        'Accept-Language': 'id'
+      }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.display_name) {
+          let formattedAddr = data.display_name;
+          if (addressTextareaElement) {
+            addressTextareaElement.value = formattedAddr;
+            // Highlight changes briefly to indicate auto-completion
+            addressTextareaElement.classList.add('bg-emerald-50');
+            setTimeout(() => addressTextareaElement.classList.remove('bg-emerald-50'), 1000);
+          }
+          if (mapStatusTextElement) {
+            mapStatusTextElement.innerText = `Jarak terpilih: ${roadDistance} KM. Alamat berhasil diupdate!`;
+          }
+        } else {
+          if (mapStatusTextElement) {
+            mapStatusTextElement.innerText = `Jarak terpilih: ${roadDistance} KM.`;
+          }
+        }
+      })
+      .catch(err => {
+        console.error('Reverse geocode error:', err);
+        if (mapStatusTextElement) {
+          mapStatusTextElement.innerText = `Jarak terpilih: ${roadDistance} KM.`;
+        }
+      });
+  }
+}
+
+// Search for address in the map search field
+function searchMapAddress() {
+  const queryInput = document.getElementById('map-search-input');
+  if (!queryInput) return;
+
+  const query = queryInput.value.trim();
+  if (!query) {
+    showToast('Silakan masukkan nama jalan atau desa!');
+    return;
+  }
+
+  const mapStatusTextElement = document.getElementById('map-status-text');
+  if (mapStatusTextElement) mapStatusTextElement.innerText = 'Mencari lokasi...';
+
+  // Add region context to make search highly relevant to the store's area
+  const fullQuery = query.toLowerCase().includes('bawen') ? query : `${query}, Bawen, Kabupaten Semarang`;
+  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fullQuery)}&limit=1`;
+
+  fetch(url)
+    .then(res => res.json())
+    .then(results => {
+      if (results && results.length > 0) {
+        const place = results[0];
+        const lat = parseFloat(place.lat);
+        const lng = parseFloat(place.lon);
+
+        if (leafletMap && userMarker) {
+          leafletMap.setView([lat, lng], 15);
+          userMarker.setLatLng([lat, lng]);
+          updateLocationFromCoords(lat, lng, place.display_name);
+        }
+      } else {
+        if (mapStatusTextElement) mapStatusTextElement.innerText = 'Lokasi tidak ditemukan. Coba ketik dengan kata kunci lain.';
+        showToast('Lokasi tidak ditemukan! Coba nama jalan atau kelurahan.');
+      }
+    })
+    .catch(err => {
+      console.error('Geocode search error:', err);
+      if (mapStatusTextElement) mapStatusTextElement.innerText = 'Gagal menghubungi server pencarian.';
+    });
+}
+
+// Initialize Leaflet Map
+function initLeafletMap() {
+  if (mapInitialized) {
+    // Invalidate map layout size to force proper dimensions in iframes
+    setTimeout(() => {
+      if (leafletMap) leafletMap.invalidateSize();
+    }, 150);
+    return;
+  }
+
+  const mapElement = document.getElementById('checkout-map');
+  if (!mapElement) return;
+
+  const mapStatusTextElement = document.getElementById('map-status-text');
+
+  try {
+    // Center at Bawen Store
+    leafletMap = L.map('checkout-map').setView([STORE_COORDS.lat, STORE_COORDS.lng], 14);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(leafletMap);
+
+    // Color marker icons
+    const storeIcon = L.icon({
+      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41]
+    });
+
+    const userIcon = L.icon({
+      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41]
+    });
+
+    // Store marker setup
+    storeMarker = L.marker([STORE_COORDS.lat, STORE_COORDS.lng], { icon: storeIcon }).addTo(leafletMap);
+    storeMarker.bindPopup('<b class="text-xs text-emerald-700">Warung Kelontong Bawen (Toko)</b><br><span class="text-[10px] text-gray-500">Ngawan Lor RT 02 RW 05 Bawen</span>').openPopup();
+
+    // User marker setup
+    userMarker = L.marker([STORE_COORDS.lat - 0.003, STORE_COORDS.lng + 0.003], {
+      icon: userIcon,
+      draggable: true
+    }).addTo(leafletMap);
+    userMarker.bindPopup('<b class="text-xs text-blue-700">Rumah Anda (Geser Saya!)</b>').openPopup();
+
+    // Handle drag end events
+    userMarker.on('dragend', function () {
+      const pos = userMarker.getLatLng();
+      updateLocationFromCoords(pos.lat, pos.lng);
+    });
+
+    // Handle direct clicks on map
+    leafletMap.on('click', function (e) {
+      const lat = e.latlng.lat;
+      const lng = e.latlng.lng;
+      userMarker.setLatLng([lat, lng]);
+      updateLocationFromCoords(lat, lng);
+    });
+
+    mapInitialized = true;
+    if (mapStatusTextElement) mapStatusTextElement.innerText = 'Peta berhasil dimuat! Silakan geser pin biru atau ketik alamat.';
+    
+    // Invalidate map sizing to prevent clipping inside dynamic frames
+    setTimeout(() => {
+      leafletMap.invalidateSize();
+    }, 250);
+
+  } catch (error) {
+    console.error('Error initializing Leaflet map:', error);
+    if (mapStatusTextElement) mapStatusTextElement.innerText = 'Gagal memuat peta. Silakan isi alamat secara manual.';
+  }
+}
+
+// Get HTML5 Geolocation
+function getGPSLocation() {
+  const mapStatusTextElement = document.getElementById('map-status-text');
+  
+  if (!navigator.geolocation) {
+    showToast('Perangkat Anda tidak mendukung GPS / Geolocation!');
+    return;
+  }
+
+  showToast('Sedang mencari sinyal GPS Anda...');
+  if (mapStatusTextElement) mapStatusTextElement.innerText = 'Mencari sinyal GPS Anda...';
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+
+      // Make map visible
+      const mapContainerElement = document.getElementById('map-picker-container');
+      if (mapContainerElement) {
+        mapContainerElement.classList.remove('hidden');
+        initLeafletMap();
+      }
+
+      // Center map and user pin
+      if (leafletMap && userMarker) {
+        leafletMap.setView([lat, lng], 16);
+        userMarker.setLatLng([lat, lng]);
+      }
+
+      // Calculate distance and geocode address name
+      updateLocationFromCoords(lat, lng);
+      showToast('Lokasi GPS berhasil didapatkan!');
+    },
+    (error) => {
+      console.error('GPS Error:', error);
+      let errMsg = 'Gagal mengambil GPS.';
+      if (error.code === error.PERMISSION_DENIED) {
+        errMsg = 'Izin akses GPS ditolak oleh sistem.';
+      }
+      showToast(errMsg);
+      if (mapStatusTextElement) {
+        mapStatusTextElement.innerText = errMsg + ' Silakan pilih lokasi secara manual lewat peta.';
+      }
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0
+    }
+  );
+}
+
+// Setup Maps and GPS Listeners
+const btnGetGps = document.getElementById('btn-get-gps');
+const btnToggleMap = document.getElementById('btn-toggle-map');
+const btnCloseMap = document.getElementById('btn-close-map');
+const btnMapSearch = document.getElementById('btn-map-search');
+const mapSearchInput = document.getElementById('map-search-input');
+const mapContainer = document.getElementById('map-picker-container');
+
+if (btnGetGps) {
+  btnGetGps.addEventListener('click', getGPSLocation);
+}
+
+if (btnToggleMap) {
+  btnToggleMap.addEventListener('click', () => {
+    if (mapContainer) {
+      if (mapContainer.classList.contains('hidden')) {
+        mapContainer.classList.remove('hidden');
+        initLeafletMap();
+        showToast('Membuka peta lokasi...');
+      } else {
+        mapContainer.classList.add('hidden');
+      }
+    }
+  });
+}
+
+if (btnCloseMap) {
+  btnCloseMap.addEventListener('click', () => {
+    mapContainer?.classList.add('hidden');
+  });
+}
+
+if (btnMapSearch) {
+  btnMapSearch.addEventListener('click', searchMapAddress);
+}
+
+if (mapSearchInput) {
+  mapSearchInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      searchMapAddress();
+    }
+  });
+}
+
+// ==================== CUSTOMER REVIEWS SYSTEM ====================
+const INITIAL_REVIEWS = [
+  {
+    id: 'rev-1',
+    author: 'Ibu Siti Rahayu',
+    rating: 5,
+    comment: 'Sangat puas belanja di sini! Beras premiumnya pulen dan wangi banget. Harganya murah, langsung diantar cepat ke depan rumah. COD jadi aman sekali.',
+    date: '10 Juli 2026',
+    verified: true
+  },
+  {
+    id: 'rev-2',
+    author: 'Pak Budi Santoso',
+    rating: 5,
+    comment: 'Pengiriman sangat kilat, sabun dan mie instan lengkap semua. Penjual sangat ramah melayani di WhatsApp. Recommended banget buat warga Bawen!',
+    date: '12 Juli 2026',
+    verified: true
+  },
+  {
+    id: 'rev-3',
+    author: 'Mbak Dewi Lestari',
+    rating: 5,
+    comment: 'Biasa beli beras dan minyak goreng bulanan di sini. Selalu fresh, timbangan pas dan jujur. Terima kasih banyak Warung Kelontong Bawen.',
+    date: '13 Juli 2026',
+    verified: true
+  }
+];
+
+let CUSTOM_REVIEWS = JSON.parse(localStorage.getItem('warung_bawen_reviews'));
+if (!CUSTOM_REVIEWS) {
+  CUSTOM_REVIEWS = INITIAL_REVIEWS;
+  localStorage.setItem('warung_bawen_reviews', JSON.stringify(CUSTOM_REVIEWS));
+}
+
+// Render stars utility
+function generateStarsHtml(rating) {
+  let starsHtml = '';
+  for (let i = 1; i <= 5; i++) {
+    if (i <= rating) {
+      starsHtml += `<i data-lucide="star" class="w-3.5 h-3.5 text-amber-400 fill-current"></i>`;
+    } else {
+      starsHtml += `<i data-lucide="star" class="w-3.5 h-3.5 text-gray-200"></i>`;
+    }
+  }
+  return starsHtml;
+}
+
+// Render reviews list & calculation
+function renderReviews() {
+  const listContainer = document.getElementById('reviews-list-container');
+  if (!listContainer) return;
+
+  listContainer.innerHTML = '';
+
+  // Sort: newer reviews first
+  const sortedReviews = [...CUSTOM_REVIEWS].reverse();
+
+  sortedReviews.forEach(rev => {
+    const dateStr = rev.date;
+    const initialLetter = rev.author ? rev.author.charAt(0).toUpperCase() : 'P';
+    
+    // Generate avatar color based on name initials
+    const colors = ['bg-emerald-100 text-emerald-700', 'bg-blue-100 text-blue-700', 'bg-purple-100 text-purple-700', 'bg-amber-100 text-amber-700', 'bg-teal-100 text-teal-700'];
+    const colorIndex = (rev.author ? rev.author.charCodeAt(0) : 0) % colors.length;
+    const avatarColorClass = colors[colorIndex];
+
+    const reviewCard = document.createElement('div');
+    reviewCard.className = 'bg-gray-50/50 border border-gray-100 p-4 rounded-2xl space-y-2.5 hover:border-gray-200/80 transition-all';
+    reviewCard.innerHTML = `
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-full ${avatarColorClass} font-bold text-xs flex items-center justify-center shadow-xs flex-shrink-0">
+            ${initialLetter}
+          </div>
+          <div>
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="text-xs font-bold text-gray-800">${rev.author}</span>
+              ${rev.verified ? `
+                <span class="inline-flex items-center gap-0.5 bg-emerald-100 text-emerald-800 text-[9px] font-black px-1.5 py-0.5 rounded-md">
+                  <i data-lucide="badge-check" class="w-2.5 h-2.5 fill-current text-emerald-600"></i>
+                  Terverifikasi
+                </span>
+              ` : ''}
+            </div>
+            <span class="text-[9px] text-gray-400 font-medium">${dateStr}</span>
+          </div>
+        </div>
+        
+        <!-- Stars rating -->
+        <div class="flex gap-0.5">
+          ${generateStarsHtml(rev.rating)}
+        </div>
+      </div>
+      
+      <p class="text-xs text-gray-600 leading-relaxed font-medium pl-1">${rev.comment}</p>
+    `;
+    listContainer.appendChild(reviewCard);
+  });
+
+  // Calculate stats
+  const totalCount = CUSTOM_REVIEWS.length;
+  document.getElementById('total-reviews-count').innerText = `Berdasarkan ${totalCount} ulasan pelanggan`;
+
+  let sumRating = 0;
+  const ratingDistribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+
+  CUSTOM_REVIEWS.forEach(rev => {
+    sumRating += rev.rating;
+    if (ratingDistribution[rev.rating] !== undefined) {
+      ratingDistribution[rev.rating]++;
+    }
+  });
+
+  const avgRating = totalCount > 0 ? Math.round((sumRating / totalCount) * 10) / 10 : 0;
+  document.getElementById('avg-rating-big').innerText = avgRating.toFixed(1);
+
+  // Update big average stars container
+  const avgStarsContainer = document.getElementById('avg-stars-container');
+  if (avgStarsContainer) {
+    avgStarsContainer.innerHTML = '';
+    const roundedAvg = Math.round(avgRating);
+    for (let i = 1; i <= 5; i++) {
+      const starIcon = document.createElement('i');
+      starIcon.setAttribute('data-lucide', 'star');
+      if (i <= roundedAvg) {
+        starIcon.className = 'w-4 h-4 text-amber-400 fill-current';
+      } else {
+        starIcon.className = 'w-4 h-4 text-gray-200';
+      }
+      avgStarsContainer.appendChild(starIcon);
+    }
+  }
+
+  // Update bar and count displays for stars
+  for (let r = 1; r <= 5; r++) {
+    const count = ratingDistribution[r];
+    const pct = totalCount > 0 ? Math.round((count / totalCount) * 100) : 0;
+    
+    const countEl = document.getElementById(`count-${r}-star`);
+    const barEl = document.getElementById(`bar-${r}-star`);
+
+    if (countEl) countEl.innerText = count;
+    if (barEl) barEl.style.width = `${pct}%`;
+  }
+
+  // Reload lucide icons
+  if (window.lucide) {
+    window.lucide.createIcons();
+  }
+}
+
+// Setup reviews panel listener
+const btnToggleReviewForm = document.getElementById('btn-toggle-review-form');
+const reviewFormContainer = document.getElementById('review-form-container');
+const btnCancelReview = document.getElementById('btn-cancel-review');
+const addReviewForm = document.getElementById('add-review-form');
+const starRatingSelector = document.getElementById('star-rating-selector');
+const reviewRatingValueInput = document.getElementById('review-rating-value');
+const starRatingText = document.getElementById('star-rating-text');
+
+if (btnToggleReviewForm && reviewFormContainer) {
+  btnToggleReviewForm.addEventListener('click', () => {
+    reviewFormContainer.classList.toggle('hidden');
+    if (!reviewFormContainer.classList.contains('hidden')) {
+      document.getElementById('review-author').focus();
+    }
+  });
+}
+
+if (btnCancelReview && reviewFormContainer) {
+  btnCancelReview.addEventListener('click', () => {
+    reviewFormContainer.classList.add('hidden');
+    addReviewForm.reset();
+    resetStarRatingInput();
+  });
+}
+
+// Handles rating input click interaction
+if (starRatingSelector) {
+  const ratingTexts = {
+    1: 'Kecewa (1/5)',
+    2: 'Kurang Puas (2/5)',
+    3: 'Biasa Saja (3/5)',
+    4: 'Puas (4/5)',
+    5: 'Sangat Puas (5/5)'
+  };
+
+  const starButtons = starRatingSelector.querySelectorAll('button');
+  starButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const selectedRating = parseInt(btn.getAttribute('data-rating')) || 5;
+      reviewRatingValueInput.value = selectedRating;
+      if (starRatingText) starRatingText.innerText = ratingTexts[selectedRating];
+
+      // Re-style stars
+      starButtons.forEach(starBtn => {
+        const rVal = parseInt(starBtn.getAttribute('data-rating'));
+        const starIcon = starBtn.querySelector('i');
+        if (starIcon) {
+          if (rVal <= selectedRating) {
+            starIcon.classList.add('fill-current', 'text-amber-400');
+            starIcon.classList.remove('text-gray-200');
+          } else {
+            starIcon.classList.remove('fill-current', 'text-amber-400');
+            starIcon.classList.add('text-gray-200');
+          }
+        }
+      });
+    });
+  });
+}
+
+function resetStarRatingInput() {
+  if (reviewRatingValueInput) reviewRatingValueInput.value = '5';
+  if (starRatingText) starRatingText.innerText = 'Sangat Puas (5/5)';
+  if (starRatingSelector) {
+    const starButtons = starRatingSelector.querySelectorAll('button');
+    starButtons.forEach(starBtn => {
+      const starIcon = starBtn.querySelector('i');
+      if (starIcon) {
+        starIcon.classList.add('fill-current', 'text-amber-400');
+        starIcon.classList.remove('text-gray-200');
+      }
+    });
+  }
+}
+
+// Review form submit
+if (addReviewForm) {
+  addReviewForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+
+    const author = document.getElementById('review-author').value.trim();
+    const comment = document.getElementById('review-comment').value.trim();
+    const rating = parseInt(reviewRatingValueInput.value) || 5;
+
+    if (!author || !comment) {
+      showToast('Harap lengkapi semua isian formulir ulasan!');
+      return;
+    }
+
+    const todayOptions = { year: 'numeric', month: 'long', day: 'numeric' };
+    const dateFormatted = new Date().toLocaleDateString('id-ID', todayOptions);
+
+    const newReview = {
+      id: 'rev-' + Date.now(),
+      author: author,
+      rating: rating,
+      comment: comment,
+      date: dateFormatted,
+      verified: false
+    };
+
+    CUSTOM_REVIEWS.push(newReview);
+    localStorage.setItem('warung_bawen_reviews', JSON.stringify(CUSTOM_REVIEWS));
+
+    // Reset, close and re-render
+    addReviewForm.reset();
+    resetStarRatingInput();
+    reviewFormContainer.classList.add('hidden');
+    
+    renderReviews();
+    showToast('Terima kasih! Ulasan Anda berhasil dikirim.');
+  });
+}
+
 // --- INITIALIZER ---
 document.addEventListener('DOMContentLoaded', () => {
   renderCategories();
   renderProducts();
   updateCartUI();
+  renderReviews();
 });
