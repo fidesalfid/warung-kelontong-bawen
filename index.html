@@ -336,6 +336,45 @@
                 ></textarea>
               </div>
 
+              <!-- Jarak Pengiriman (KM) Selector -->
+              <div class="border-t border-dashed border-gray-150 pt-3">
+                <label for="checkout-distance-select" class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">
+                  🚗 Pilih Jarak / Wilayah Pengiriman *
+                </label>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-left">
+                  <select 
+                    id="checkout-distance-select" 
+                    required
+                    class="w-full border border-gray-200 focus:border-emerald-500 focus:outline-none rounded-xl px-2.5 py-2.5 text-xs bg-white text-gray-700 font-semibold transition-colors cursor-pointer"
+                  >
+                    <option value="1" selected>Bawen Kota (Jarak ~1 KM)</option>
+                    <option value="3">Harjosari / Samban (Jarak ~3 KM)</option>
+                    <option value="4">Asinan / Rawa Pening (Jarak ~4 KM)</option>
+                    <option value="5">Tuntang Kota (Jarak ~5 KM)</option>
+                    <option value="6">Ambarawa Kota (Jarak ~6 KM) - Di atas 5 KM</option>
+                    <option value="8">Bergas / Klepu (Jarak ~8 KM) - Di atas 5 KM</option>
+                    <option value="12">Ungaran / Jambu (Jarak ~12 KM) - Di atas 5 KM</option>
+                    <option value="custom">Tulis Jarak Manual (KM)...</option>
+                  </select>
+                  
+                  <div id="checkout-distance-custom-container" class="hidden flex items-center gap-1.5">
+                    <input 
+                      type="number" 
+                      id="checkout-distance-custom-input" 
+                      min="1" 
+                      max="50" 
+                      value="6"
+                      placeholder="Jarak (KM)"
+                      class="w-full border border-gray-200 focus:border-emerald-500 focus:outline-none rounded-xl px-3 py-2 text-xs font-bold transition-colors text-center"
+                    />
+                    <span class="text-xs text-gray-500 font-bold">KM</span>
+                  </div>
+                </div>
+                <p id="distance-info-hint" class="text-[9px] text-gray-400 mt-1">
+                  * Bebas Ongkir harian (maks. 5 KM) untuk pembelanjaan minimal Rp 50.000. Jarak di atas 5 KM dikenakan tambahan biaya Rp 2.000/KM.
+                </p>
+              </div>
+
               <div class="grid grid-cols-2 gap-3">
                 <div>
                   <label for="checkout-payment" class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Metode Pembayaran</label>
@@ -360,14 +399,26 @@
             </div>
 
             <!-- Receipt Bill Summary calculations -->
-            <div id="cart-receipt-summary" class="bg-gray-50 border border-gray-100 rounded-2xl p-4 mb-4 space-y-2 text-xs">
+            <div id="cart-receipt-summary" class="bg-gray-50 border border-gray-100 rounded-2xl p-4 mb-4 space-y-2 text-xs text-left">
               <div class="flex justify-between text-gray-500">
                 <span>Subtotal Sembako</span>
                 <span id="summary-subtotal" class="font-medium text-gray-800">Rp 0</span>
               </div>
               <div class="flex justify-between text-gray-500">
-                <span>Biaya Pengiriman (Bawen)</span>
-                <span id="summary-shipping" class="font-semibold text-gray-800">Rp 0</span>
+                <span>Jarak Pengiriman</span>
+                <span id="summary-distance-display" class="font-bold text-gray-800">1 KM</span>
+              </div>
+              <div class="flex justify-between text-gray-500">
+                <span>Ongkir Dasar (≤ 5 KM)</span>
+                <span id="summary-shipping-base" class="font-medium text-gray-800">Rp 5.000</span>
+              </div>
+              <div id="row-shipping-extra" class="flex justify-between text-gray-500 hidden">
+                <span>Biaya Jauh (> 5 KM)</span>
+                <span id="summary-shipping-extra" class="font-bold text-amber-600">+ Rp 0</span>
+              </div>
+              <div id="row-shipping-discount" class="flex justify-between text-emerald-600 hidden">
+                <span>Potongan Belanja / Gratis Ongkir</span>
+                <span id="summary-shipping-discount" class="font-bold">- Rp 0</span>
               </div>
               <div class="h-px bg-gray-200/60 my-2"></div>
               <div class="flex justify-between items-center text-sm">
@@ -456,11 +507,11 @@
           <ul class="space-y-2.5 text-xs">
             <li class="flex items-start gap-2">
               <i data-lucide="map-pin" class="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0"></i>
-              <span>Bawen, Kec. Bawen, Kabupaten Semarang, Jawa Tengah 50661</span>
+              <span>Ngawan Lor RT 02 RW 05 Bawen , Kabupaten Semarang, Jawa Tengah 50661</span>
             </li>
             <li class="flex items-center gap-2">
               <i data-lucide="phone" class="w-4 h-4 text-emerald-400 flex-shrink-0"></i>
-              <span>Hubungi WA: 0813-2924-1551</span>
+              <span>Hubungi WA: 0895-3512-87974</span>
             </li>
           </ul>
         </div>
@@ -535,55 +586,143 @@
 
         <!-- Admin Content (Hidden initially) -->
         <div id="admin-main-content" class="flex-1 overflow-hidden hidden flex flex-col">
-          <!-- Search & Reset Top Bar -->
-          <div class="p-4 border-b border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white">
-            <div class="relative w-full sm:max-w-xs">
-              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                <i data-lucide="search" class="w-4 h-4"></i>
+          <!-- Admin Tabs Header -->
+          <div class="px-6 border-b border-gray-100 flex gap-4 bg-white flex-shrink-0">
+            <button 
+              type="button" 
+              id="admin-tab-list" 
+              class="border-b-2 border-emerald-600 text-emerald-600 font-bold text-xs sm:text-sm py-3 px-1 transition-all cursor-pointer"
+            >
+              Daftar Produk
+            </button>
+            <button 
+              type="button" 
+              id="admin-tab-add" 
+              class="border-b-2 border-transparent text-gray-400 hover:text-gray-600 font-semibold text-xs sm:text-sm py-3 px-1 transition-all cursor-pointer flex items-center gap-1.5"
+            >
+              <i data-lucide="plus-circle" class="w-4 h-4"></i>
+              Tambah Produk Baru
+            </button>
+          </div>
+
+          <!-- TAB 1: LIST PRODUCTS CONTAINER -->
+          <div id="admin-list-tab-content" class="flex-1 flex flex-col overflow-hidden">
+            <!-- Search & Reset Top Bar -->
+            <div class="p-4 border-b border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white">
+              <div class="relative w-full sm:max-w-xs">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                  <i data-lucide="search" class="w-4 h-4"></i>
+                </div>
+                <input 
+                  type="text" 
+                  id="admin-search-input" 
+                  placeholder="Cari produk admin..." 
+                  class="w-full bg-gray-50 border border-gray-200 focus:border-emerald-500 focus:bg-white rounded-lg py-2 pl-9 pr-4 text-xs transition-colors focus:outline-none"
+                />
               </div>
-              <input 
-                type="text" 
-                id="admin-search-input" 
-                placeholder="Cari produk admin..." 
-                class="w-full bg-gray-50 border border-gray-200 focus:border-emerald-500 focus:bg-white rounded-lg py-2 pl-9 pr-4 text-xs transition-colors focus:outline-none"
-              />
+              
+              <div class="flex items-center gap-2 w-full sm:w-auto">
+                <button 
+                  type="button" 
+                  id="admin-reset-data-btn"
+                  class="flex-1 sm:flex-initial bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-850 font-semibold text-xs py-2 px-4 rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                  title="Kembalikan semua produk ke data awal"
+                >
+                  <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                  Reset Default
+                </button>
+                <button 
+                  type="button" 
+                  id="admin-save-all-btn"
+                  class="flex-1 sm:flex-initial bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs py-2 px-4 rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
+                >
+                  <i data-lucide="save" class="w-3.5 h-3.5"></i>
+                  Simpan Perubahan
+                </button>
+              </div>
             </div>
-            
-            <div class="flex items-center gap-2 w-full sm:w-auto">
-              <button 
-                type="button" 
-                id="admin-reset-data-btn"
-                class="flex-1 sm:flex-initial bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-850 font-semibold text-xs py-2 px-4 rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-                title="Kembalikan semua produk ke data awal"
-              >
-                <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
-                Reset Default
-              </button>
-              <button 
-                type="button" 
-                id="admin-save-all-btn"
-                class="flex-1 sm:flex-initial bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs py-2 px-4 rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
-              >
-                <i data-lucide="save" class="w-3.5 h-3.5"></i>
-                Simpan Perubahan
-              </button>
+
+            <!-- Product Editing List -->
+            <div class="flex-1 overflow-y-auto p-4 bg-gray-50">
+              <!-- Table Headers for Desktop -->
+              <div class="hidden md:grid md:grid-cols-12 gap-4 px-4 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                <div class="col-span-5">Nama Produk &amp; Unit</div>
+                <div class="col-span-2 text-right">Kategori</div>
+                <div class="col-span-2 text-right">Harga (Rp)</div>
+                <div class="col-span-2 text-right">Stok</div>
+                <div class="col-span-1 text-center">Aksi</div>
+              </div>
+              
+              <div id="admin-products-list" class="space-y-3 mt-1">
+                <!-- Rendered via JS -->
+              </div>
             </div>
           </div>
 
-          <!-- Product Editing List -->
-          <div class="flex-1 overflow-y-auto p-4 bg-gray-50">
-            <!-- Table Headers for Desktop -->
-            <div class="hidden md:grid md:grid-cols-12 gap-4 px-4 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-              <div class="col-span-5">Nama Produk &amp; Unit</div>
-              <div class="col-span-2 text-right">Kategori</div>
-              <div class="col-span-2 text-right">Harga (Rp)</div>
-              <div class="col-span-2 text-right">Stok</div>
-              <div class="col-span-1 text-center">Aksi</div>
-            </div>
-            
-            <div id="admin-products-list" class="space-y-3 mt-1">
-              <!-- Rendered via JS -->
-            </div>
+          <!-- TAB 2: ADD PRODUCT CONTAINER -->
+          <div id="admin-add-tab-content" class="flex-1 overflow-y-auto p-4 bg-gray-50 hidden">
+            <!-- Form -->
+            <form id="admin-add-product-form" class="max-w-xl mx-auto bg-white p-6 rounded-2xl border border-gray-150 shadow-sm space-y-4">
+              <h4 class="font-display font-bold text-gray-900 text-sm sm:text-base border-b border-gray-100 pb-2 flex items-center gap-2 text-left">
+                <i data-lucide="plus-circle" class="w-5 h-5 text-emerald-600"></i>
+                Form Tambah Produk Sembako Baru
+              </h4>
+              
+              <div class="text-left">
+                <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Nama Produk *</label>
+                <input type="text" id="add-prod-name" required placeholder="Contoh: Beras Rojo Lele Premium" class="w-full border border-gray-200 focus:border-emerald-500 focus:outline-none rounded-xl px-3.5 py-2.5 text-xs transition-colors animate-none" />
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
+                <div>
+                  <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Kategori *</label>
+                  <select id="add-prod-category" required class="w-full border border-gray-200 focus:border-emerald-500 focus:outline-none rounded-xl px-2.5 py-2.5 text-xs bg-white text-gray-700 font-semibold transition-colors cursor-pointer">
+                    <option value="Beras" selected>Beras</option>
+                    <option value="Minyak Goreng">Minyak Goreng</option>
+                    <option value="Telur">Telur</option>
+                    <option value="Gula">Gula</option>
+                    <option value="Mie Instan">Mie Instan</option>
+                    <option value="Minuman">Minuman</option>
+                    <option value="Snack">Snack</option>
+                    <option value="Sabun dan kebutuhan rumah tangga">Sabun dan kebutuhan rumah tangga</option>
+                    <option value="Lain-lain">Lain-lain</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Unit / Ukuran *</label>
+                  <input type="text" id="add-prod-unit" required placeholder="Contoh: 1 Kg, 1 Pcs, 500 Gram" class="w-full border border-gray-200 focus:border-emerald-500 focus:outline-none rounded-xl px-3.5 py-2.5 text-xs transition-colors" />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
+                <div>
+                  <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Harga (Rp) *</label>
+                  <input type="number" id="add-prod-price" required min="0" placeholder="Contoh: 15000" class="w-full border border-gray-200 focus:border-emerald-500 focus:outline-none rounded-xl px-3.5 py-2.5 text-xs transition-colors" />
+                </div>
+                <div>
+                  <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Stok Awal *</label>
+                  <input type="number" id="add-prod-stock" required min="0" placeholder="Contoh: 50" class="w-full border border-gray-200 focus:border-emerald-500 focus:outline-none rounded-xl px-3.5 py-2.5 text-xs transition-colors" />
+                </div>
+              </div>
+
+              <div class="text-left">
+                <label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">URL Gambar Produk (Opsional)</label>
+                <input type="url" id="add-prod-image" placeholder="Paste link gambar (https://...), kosongkan untuk gambar default" class="w-full border border-gray-200 focus:border-emerald-500 focus:outline-none rounded-xl px-3.5 py-2.5 text-xs transition-colors" />
+                <p class="text-[10px] text-gray-400 mt-1">Anda bisa salin link gambar dari google atau unspash, atau kosongkan saja untuk memakai gambar bawaan.</p>
+              </div>
+
+              <div class="flex items-center space-x-2 pt-1 text-left">
+                <input type="checkbox" id="add-prod-bestseller" class="rounded text-emerald-600 focus:ring-emerald-500 h-4 w-4 border-gray-300 cursor-pointer" />
+                <label for="add-prod-bestseller" class="text-xs text-gray-600 font-semibold cursor-pointer">Tandai sebagai Produk Terlaris (Best Seller)</label>
+              </div>
+
+              <div class="pt-2">
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-md text-xs cursor-pointer flex items-center justify-center gap-1.5">
+                  <i data-lucide="plus" class="w-4.5 h-4.5"></i>
+                  Simpan &amp; Publish Produk Baru
+                </button>
+              </div>
+            </form>
           </div>
         </div>
 

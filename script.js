@@ -5,8 +5,8 @@
 
 // ==================== CONFIGURATION ====================
 // Ganti nomor WhatsApp pemilik warung di sini (Format internasional tanpa '+' atau spasi)
-const OWNER_WA_NUMBER = '6281329241551'; 
-const ADMIN_PIN = '1234'; // PIN Keamanan untuk masuk ke Panel Admin
+const OWNER_WA_NUMBER = '62895351287974'; 
+const ADMIN_PIN = 'Filiv2212@'; // PIN Keamanan untuk masuk ke Panel Admin
 const FREE_SHIPPING_MINIMUM = 50000;
 const FLAT_SHIPPING_FEE = 5000;
 // ========================================================
@@ -631,37 +631,84 @@ function updateCartUI() {
       });
     });
 
-    // Shipping calculations
-    let shippingFee = FLAT_SHIPPING_FEE;
+    // Distance retrieval
+    const distanceSelect = document.getElementById('checkout-distance-select');
+    const distanceCustomInput = document.getElementById('checkout-distance-custom-input');
+    
+    let distance = 1;
+    if (distanceSelect) {
+      if (distanceSelect.value === 'custom') {
+        distance = parseFloat(distanceCustomInput?.value) || 1;
+      } else {
+        distance = parseFloat(distanceSelect.value) || 1;
+      }
+    }
+
+    // Shipping fee calculation rules
+    const baseShipping = FLAT_SHIPPING_FEE; // Rp 5.000
+    let extraCharge = 0;
+    
+    if (distance > 5) {
+      const extraKm = Math.ceil(distance - 5);
+      extraCharge = extraKm * 2000; // Rp 2.000 per KM di atas 5 KM
+    }
+    
+    let shippingDiscount = 0;
+    let totalShipping = baseShipping + extraCharge;
+
     if (subtotal >= FREE_SHIPPING_MINIMUM) {
-      shippingFee = 0;
+      // Diskon gratis ongkir harian Rp 5.000 (menghilangkan ongkir dasar)
+      shippingDiscount = baseShipping;
+      totalShipping = Math.max(0, totalShipping - shippingDiscount);
     }
 
-    const grandTotal = subtotal + shippingFee;
+    const grandTotal = subtotal + totalShipping;
 
-    // Update prices
-    summarySubtotal.innerText = formatRupiah(subtotal);
-    summaryShipping.innerText = shippingFee === 0 ? 'GRATIS' : formatRupiah(shippingFee);
-    if (shippingFee === 0) {
-      summaryShipping.className = 'text-emerald-600 font-bold';
-    } else {
-      summaryShipping.className = 'text-gray-800 font-semibold';
+    // Update prices elements
+    const summaryDistanceDisplay = document.getElementById('summary-distance-display');
+    const summaryShippingBase = document.getElementById('summary-shipping-base');
+    const rowShippingExtra = document.getElementById('row-shipping-extra');
+    const summaryShippingExtra = document.getElementById('summary-shipping-extra');
+    const rowShippingDiscount = document.getElementById('row-shipping-discount');
+    const summaryShippingDiscount = document.getElementById('summary-shipping-discount');
+
+    if (summarySubtotal) summarySubtotal.innerText = formatRupiah(subtotal);
+    if (summaryDistanceDisplay) summaryDistanceDisplay.innerText = `${distance} KM`;
+    if (summaryShippingBase) summaryShippingBase.innerText = formatRupiah(baseShipping);
+    
+    if (rowShippingExtra) {
+      if (extraCharge > 0) {
+        rowShippingExtra.classList.remove('hidden');
+        if (summaryShippingExtra) summaryShippingExtra.innerText = `+ ${formatRupiah(extraCharge)}`;
+      } else {
+        rowShippingExtra.classList.add('hidden');
+      }
     }
-    summaryTotal.innerText = formatRupiah(grandTotal);
+    
+    if (rowShippingDiscount) {
+      if (shippingDiscount > 0) {
+        rowShippingDiscount.classList.remove('hidden');
+        if (summaryShippingDiscount) summaryShippingDiscount.innerText = `- ${formatRupiah(shippingDiscount)}`;
+      } else {
+        rowShippingDiscount.classList.add('hidden');
+      }
+    }
+    
+    if (summaryTotal) summaryTotal.innerText = formatRupiah(grandTotal);
 
     // Free shipping progress bar
     if (subtotal >= FREE_SHIPPING_MINIMUM) {
       progressContainer.className = 'bg-emerald-50 border border-emerald-100 p-3 rounded-xl mb-4';
       progressFill.style.width = '100%';
       progressFill.className = 'h-full bg-emerald-500 rounded-full transition-all duration-300';
-      progressText.innerHTML = `🎉 Selamat! Kamu mendapatkan <strong>GRATIS ONGKIR</strong> khusus area Bawen!`;
+      progressText.innerHTML = `🎉 Selamat! Kamu mendapatkan <strong>POTONGAN ONGKIR</strong> khusus area Bawen!`;
     } else {
       const remaining = FREE_SHIPPING_MINIMUM - subtotal;
       const pct = (subtotal / FREE_SHIPPING_MINIMUM) * 100;
       progressContainer.className = 'bg-amber-50 border border-amber-100 p-3 rounded-xl mb-4';
       progressFill.style.width = `${pct}%`;
       progressFill.className = 'h-full bg-amber-500 rounded-full transition-all duration-300';
-      progressText.innerHTML = `Belanja <strong>${formatRupiah(remaining)}</strong> lagi untuk gratis ongkir!`;
+      progressText.innerHTML = `Belanja <strong>${formatRupiah(remaining)}</strong> lagi untuk diskon ongkir Rp 5.000!`;
     }
 
     lucide.createIcons();
@@ -670,13 +717,15 @@ function updateCartUI() {
 
 // --- DRAWER ACTIONS ---
 function openCart() {
-  cartDrawer.style.transform = 'translateX(0)';
+  cartDrawer.classList.remove('translate-x-full');
+  cartDrawer.classList.add('translate-x-0');
   cartOverlay.classList.remove('hidden');
   document.body.style.overflow = 'hidden'; // Stop background scroll
 }
 
 function closeCart() {
-  cartDrawer.style.transform = 'translateX(100%)';
+  cartDrawer.classList.add('translate-x-full');
+  cartDrawer.classList.remove('translate-x-0');
   cartOverlay.classList.add('hidden');
   document.body.style.overflow = '';
 }
@@ -739,7 +788,7 @@ function renderAdminProducts() {
     row.dataset.id = p.id;
     row.innerHTML = `
       <!-- Product Info/Thumbnail -->
-      <div class="col-span-5 flex items-center gap-3 w-full">
+      <div class="col-span-5 flex items-center gap-3 w-full text-left">
         <img src="${p.image}" alt="${p.name}" class="w-11 h-11 object-cover rounded-xl border border-gray-100 flex-shrink-0" />
         <div class="min-w-0 flex-1 text-left">
           <input 
@@ -758,7 +807,7 @@ function renderAdminProducts() {
       </div>
 
       <!-- Price Input -->
-      <div class="col-span-2 flex items-center justify-between md:justify-end gap-2 w-full md:w-auto">
+      <div class="col-span-2 flex items-center justify-between md:justify-end gap-2 w-full md:w-auto text-left">
         <span class="text-xs text-gray-400 font-medium md:hidden">Harga:</span>
         <div class="relative max-w-[140px] md:max-w-none flex-1 md:flex-initial">
           <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-400">Rp</span>
@@ -772,7 +821,7 @@ function renderAdminProducts() {
       </div>
 
       <!-- Stock Input -->
-      <div class="col-span-2 flex items-center justify-between md:justify-end gap-2 w-full md:w-auto">
+      <div class="col-span-2 flex items-center justify-between md:justify-end gap-2 w-full md:w-auto text-left">
         <span class="text-xs text-gray-400 font-medium md:hidden">Stok:</span>
         <input 
           type="number" 
@@ -784,14 +833,20 @@ function renderAdminProducts() {
       </div>
 
       <!-- Actions -->
-      <div class="col-span-1 flex items-center justify-center gap-2 w-full md:w-auto border-t md:border-none pt-2.5 md:pt-0">
+      <div class="col-span-1 flex items-center justify-center gap-1.5 w-full md:w-auto border-t md:border-none pt-2.5 md:pt-0">
         <button 
           type="button"
-          class="admin-save-row-btn bg-emerald-50 hover:bg-emerald-600 text-emerald-600 hover:text-white px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer"
+          class="admin-save-row-btn bg-emerald-50 hover:bg-emerald-600 text-emerald-600 hover:text-white p-2 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center cursor-pointer"
           title="Simpan produk ini"
         >
-          <i data-lucide="check" class="w-3.5 h-3.5"></i>
-          <span class="md:hidden">Simpan</span>
+          <i data-lucide="check" class="w-4 h-4"></i>
+        </button>
+        <button 
+          type="button"
+          class="admin-delete-row-btn bg-red-50 hover:bg-red-600 text-red-600 hover:text-white p-2 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center cursor-pointer"
+          title="Hapus produk ini"
+        >
+          <i data-lucide="trash-2" class="w-4 h-4"></i>
         </button>
       </div>
     `;
@@ -829,6 +884,20 @@ function renderAdminProducts() {
         localStorage.setItem('warung_bawen_products', JSON.stringify(PRODUCTS));
         renderProducts();
         showToast(`Produk "${prod.name}" berhasil diupdate!`);
+      }
+    });
+
+    // Delete single row action
+    row.querySelector('.admin-delete-row-btn').addEventListener('click', () => {
+      const id = p.id;
+      if (confirm(`Apakah Anda yakin ingin menghapus produk "${p.name}"?`)) {
+        PRODUCTS = PRODUCTS.filter(prod => prod.id !== id);
+        cart = cart.filter(c => c.id !== id);
+        localStorage.setItem('warung_bawen_products', JSON.stringify(PRODUCTS));
+        saveCart();
+        renderProducts();
+        renderAdminProducts();
+        showToast(`Produk "${p.name}" berhasil dihapus!`);
       }
     });
   });
@@ -923,6 +992,101 @@ adminSearchInput.addEventListener('input', renderAdminProducts);
 adminResetDataBtn.addEventListener('click', resetAdminProducts);
 adminSaveAllBtn.addEventListener('click', saveAllAdminProducts);
 
+// Admin Tabs Switching
+const adminTabList = document.getElementById('admin-tab-list');
+const adminTabAdd = document.getElementById('admin-tab-add');
+const adminListTabContent = document.getElementById('admin-list-tab-content');
+const adminAddTabContent = document.getElementById('admin-add-tab-content');
+
+if (adminTabList && adminTabAdd) {
+  adminTabList.addEventListener('click', () => {
+    adminTabList.className = "border-b-2 border-emerald-600 text-emerald-600 font-bold text-xs sm:text-sm py-3 px-1 transition-all cursor-pointer";
+    adminTabAdd.className = "border-b-2 border-transparent text-gray-400 hover:text-gray-600 font-semibold text-xs sm:text-sm py-3 px-1 transition-all cursor-pointer flex items-center gap-1.5";
+    adminListTabContent.classList.remove('hidden');
+    adminAddTabContent.classList.add('hidden');
+  });
+
+  adminTabAdd.addEventListener('click', () => {
+    adminTabAdd.className = "border-b-2 border-emerald-600 text-emerald-600 font-bold text-xs sm:text-sm py-3 px-1 transition-all cursor-pointer flex items-center gap-1.5";
+    adminTabList.className = "border-b-2 border-transparent text-gray-400 hover:text-gray-600 font-semibold text-xs sm:text-sm py-3 px-1 transition-all cursor-pointer";
+    adminAddTabContent.classList.remove('hidden');
+    adminListTabContent.classList.add('hidden');
+  });
+}
+
+// Add New Product Form Submit
+const adminAddProductForm = document.getElementById('admin-add-product-form');
+if (adminAddProductForm) {
+  adminAddProductForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+
+    const name = document.getElementById('add-prod-name').value.trim();
+    const category = document.getElementById('add-prod-category').value;
+    const unit = document.getElementById('add-prod-unit').value.trim();
+    const price = parseInt(document.getElementById('add-prod-price').value) || 0;
+    const stock = parseInt(document.getElementById('add-prod-stock').value) || 0;
+    let image = document.getElementById('add-prod-image').value.trim();
+    const bestSeller = document.getElementById('add-prod-bestseller').checked;
+
+    if (!name || !unit) {
+      showToast("Nama dan Unit harus diisi!");
+      return;
+    }
+
+    if (!image) {
+      // default fallbacks depending on category
+      if (category === 'Beras') image = 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&q=80&w=400';
+      else if (category === 'Minyak Goreng') image = 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&q=80&w=400';
+      else if (category === 'Telur') image = 'https://images.unsplash.com/photo-1516448620398-c5f44bf9f441?auto=format&fit=crop&q=80&w=400';
+      else if (category === 'Gula') image = 'https://images.unsplash.com/photo-1581781870027-04212e231e96?auto=format&fit=crop&q=80&w=400';
+      else image = 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=400';
+    }
+
+    const randomId = 'custom-' + Date.now();
+    const newProduct = {
+      id: randomId,
+      name,
+      category,
+      price,
+      image,
+      unit,
+      bestSeller,
+      stock
+    };
+
+    PRODUCTS.unshift(newProduct);
+    localStorage.setItem('warung_bawen_products', JSON.stringify(PRODUCTS));
+
+    adminAddProductForm.reset();
+    renderProducts();
+    renderAdminProducts();
+    showToast(`Produk "${name}" berhasil ditambahkan!`);
+    
+    // Switch tab back to List
+    adminTabList.click();
+  });
+}
+
+// Distance Selectors Events for live pricing calculation
+const distanceSelect = document.getElementById('checkout-distance-select');
+const distanceCustomInput = document.getElementById('checkout-distance-custom-input');
+const distanceCustomContainer = document.getElementById('checkout-distance-custom-container');
+
+if (distanceSelect) {
+  distanceSelect.addEventListener('change', () => {
+    if (distanceSelect.value === 'custom') {
+      distanceCustomContainer?.classList.remove('hidden');
+    } else {
+      distanceCustomContainer?.classList.add('hidden');
+    }
+    updateCartUI();
+  });
+}
+
+if (distanceCustomInput) {
+  distanceCustomInput.addEventListener('input', updateCartUI);
+}
+
 // Search input behavior (Main store)
 searchInput.addEventListener('input', (e) => {
   searchQuery = e.target.value;
@@ -989,8 +1153,31 @@ checkoutForm.addEventListener('submit', (e) => {
   // Save the new stocks back to local storage
   localStorage.setItem('warung_bawen_products', JSON.stringify(PRODUCTS));
 
-  const shippingFee = subtotal >= FREE_SHIPPING_MINIMUM ? 0 : FLAT_SHIPPING_FEE;
-  const grandTotal = subtotal + shippingFee;
+  // Distance retrieve
+  let distance = 1;
+  if (distanceSelect) {
+    if (distanceSelect.value === 'custom') {
+      distance = parseFloat(distanceCustomInput?.value) || 1;
+    } else {
+      distance = parseFloat(distanceSelect.value) || 1;
+    }
+  }
+
+  const baseShipping = FLAT_SHIPPING_FEE;
+  let extraCharge = 0;
+  if (distance > 5) {
+    const extraKm = Math.ceil(distance - 5);
+    extraCharge = extraKm * 2000;
+  }
+  let shippingDiscount = 0;
+  let totalShipping = baseShipping + extraCharge;
+
+  if (subtotal >= FREE_SHIPPING_MINIMUM) {
+    shippingDiscount = baseShipping;
+    totalShipping = Math.max(0, totalShipping - shippingDiscount);
+  }
+
+  const grandTotal = subtotal + totalShipping;
   const today = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
   // Format the WhatsApp text
@@ -999,14 +1186,18 @@ checkoutForm.addEventListener('submit', (e) => {
 *Hari/Tanggal:* ${today}
 *Nama Pembeli:* ${buyerName}
 *Alamat Kirim:* ${buyerAddress}
+*Jarak Kirim:* ${distance} KM
 *Metode Bayar:* ${buyerPayment}
 *Catatan:* ${buyerNotes}
 
 *DAFTAR BELANJAAN:*
 ${itemsListMessage}
 ----------------------------------------
-*Subtotal:* ${formatRupiah(subtotal)}
-*Ongkos Kirim:* ${shippingFee === 0 ? 'GRATIS ONGKIR' : formatRupiah(shippingFee)}
+*Subtotal Belanja:* ${formatRupiah(subtotal)}
+*Ongkir Dasar (≤ 5 KM):* ${formatRupiah(baseShipping)}
+*Tambahan Jarak (> 5 KM):* ${extraCharge > 0 ? '+' + formatRupiah(extraCharge) : 'Rp 0'}
+*Potongan Belanja:* ${shippingDiscount > 0 ? '-' + formatRupiah(shippingDiscount) : 'Rp 0'}
+*TOTAL ONGKIR:* ${totalShipping === 0 ? 'GRATIS ONGKIR' : formatRupiah(totalShipping)}
 *TOTAL BAYAR:* *${formatRupiah(grandTotal)}*
 
 _Mohon segera diproses ya Kak, barang dikirim ke alamat saya di atas. Terima kasih!_`;
