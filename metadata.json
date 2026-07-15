@@ -1,0 +1,6 @@
+{
+  "name": "Warung Kelontong Bawen",
+  "description": "Aplikasi Toko Online Modern Sederhana untuk Warung Kelontong Bawen",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
